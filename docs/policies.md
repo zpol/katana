@@ -14,7 +14,7 @@ Each policy has:
 |-------|-------------|
 | `action` | `deny` — block the Pod · `warn` — allow but flag · `audit` — log only |
 | `match` | Conditions that must be true for the policy to apply (see [Match fields](#match-fields)) |
-| `exceptions` | Namespaces where this policy is **skipped** (exact name or `cattle-*` prefix) |
+| `exceptions` | Namespaces where this policy is **skipped** (exact name or prefix wildcards like `platform-*`) |
 | `enabled` | When `false`, the policy is ignored |
 
 **Precedence:** if any enabled policy matches with `deny`, the Pod is blocked (unless `KATANA_ADMISSION_DRY_RUN=true`). Otherwise `warn`, then `audit`, then default allow.
@@ -66,12 +66,14 @@ These ship in both `configs/default-policies.yaml` (SQLite) and `deploy/crd/defa
 | 5 | **Registry Allowlist** | deny | Image registry not in the approved list |
 | 6 | **Deny Unsafe Pod Security** | deny | Pod runs as root, is privileged, or allows privilege escalation |
 
-Platform namespaces (`kube-system`, `katana-system`, `katana-poc-system`, `cattle-*`) are in **exceptions** for deny policies 1–3, 5, and 6 so cluster infrastructure is not blocked. That skip is what actually lets those Pods through. Policy 4 only records that they happened.
+Platform namespaces (`kube-system`, `kube-public`, `kube-node-lease`, `katana-system`) are in **exceptions** for deny policies 1–3, 5, and 6 so cluster infrastructure is not blocked. That skip is what actually lets those Pods through. Policy 4 only records that they happened.
+
+For Rancher-managed clusters, add optional exceptions from [`configs/examples/rancher-exceptions.yaml`](../configs/examples/rancher-exceptions.yaml).
 
 Approved registries (policy 5):
 
 - `artifactory.example.com`
-- `123456789012.dkr.ecr.eu-west-3.amazonaws.com`
+- `123456789012.dkr.ecr.us-east-1.amazonaws.com` (AWS documentation placeholder account/region)
 
 ---
 
@@ -103,7 +105,7 @@ Pod security runs **before** image checks so an unsafe Pod is rejected even if t
 | `environment` | Image | Namespace-derived: default `prod`. Namespaces listed in `KATANA_NONPROD_NAMESPACES` evaluate as `dev`. Pod labels are ignored. |
 | `scanned` | Image | `false` = no Xray result for this image |
 | `registryAllowlist` | Image | With `deny`: match when the registry is **not** on the list. With `audit`/`warn`: match when it **is** on the list |
-| `namespaceAllowlist` | Image | Policy only applies **in** these namespaces (not an exemption). Prefix `cattle-*` is supported |
+| `namespaceAllowlist` | Image | Policy only applies **in** these namespaces (not an exemption). Prefix wildcards (`platform-*`) are supported |
 | `unsafePodSecurity` | Pod | Any unsafe security context (see below) |
 | `privileged` | Pod | At least one container has `privileged: true` |
 | `runAsRoot` | Pod | Container runs as UID 0 or `runAsNonRoot: false` |
@@ -134,9 +136,9 @@ The name is misleading. This is **not** an allowlist and it does **not** grant p
 When a Pod is admitted in one of:
 
 - `kube-system`
+- `kube-public`
+- `kube-node-lease`
 - `katana-system`
-- `katana-poc-system`
-- `cattle-*` (Rancher prefix)
 
 …the policy matches and records a detection (`action: audit`). It does **not** look at CVEs, scan status, registry, or Pod `securityContext`.
 
@@ -144,7 +146,7 @@ When a Pod is admitted in one of:
 
 ### Why it exists
 
-Deny policies 1–3, 5, and 6 list those same namespaces under **exceptions**. That is intentional: blocking CNI, CoreDNS, Rancher, or KATANA itself would take the cluster down.
+Deny policies 1–3, 5, and 6 list those same namespaces under **exceptions**. That is intentional: blocking CNI, CoreDNS, or KATANA itself would take the cluster down.
 
 The side effect: those Pods skip every deny and would otherwise leave **no detection**. Policy 4 fills that gap — “platform namespace activity, allowed on purpose, still logged.”
 
@@ -178,7 +180,7 @@ Keep it if you want a trail of platform Pod creates/updates (audit, dashboard, �
 Disable or delete it if:
 
 - You only care about blocking images in app namespaces (typical pilot).
-- Detections are too noisy (`kube-system` / `cattle-*` churn often).
+- Detections are too noisy (`kube-system` churn often).
 - The webhook is **opt-in** (`katana.dev/enforce=true`). System namespaces usually do not have that label, so this policy **never fires** for unlabelled namespaces and is unused.
 
 ### How to disable
@@ -267,7 +269,7 @@ The same text appears in **Detections** when a workload is blocked.
 
 ### Why is there an “Allowlist System NS” policy? Does it allow those namespaces?
 
-No. The name is leftover wording. It is `audit` only: log Pods in `kube-system`, `katana-system`, `katana-poc-system`, and `cattle-*`. What actually lets those namespaces through is `exceptions` on the **deny** policies. You can disable policy 4 without changing enforcement. See [Allowlist System NS](#allowlist-system-ns-policy-4).
+No. The name is leftover wording. It is `audit` only: log Pods in `kube-system`, `kube-public`, `kube-node-lease`, and `katana-system`. What actually lets those namespaces through is `exceptions` on the **deny** policies. You can disable policy 4 without changing enforcement. See [Allowlist System NS](#allowlist-system-ns-policy-4).
 
 ### Why does a Critical image in kube-system show ALLOW (or audit) instead of DENY?
 
@@ -275,7 +277,7 @@ No. The name is leftover wording. It is `audit` only: log Pods in `kube-system`,
 
 ### Why does an image with HIGH CVEs get ALLOW in dev?
 
-**Block High in Prod** matches when environment is `prod`. Admission defaults every namespace to `prod` unless it is listed in `KATANA_NONPROD_NAMESPACES`. Pod labels like `env: dev` are ignored. For a demo namespace, set `KATANA_NONPROD_NAMESPACES=katana-poc-demo` (or a prefix pattern).
+**Block High in Prod** matches when environment is `prod`. Admission defaults every namespace to `prod` unless it is listed in `KATANA_NONPROD_NAMESPACES`. Pod labels like `env: dev` are ignored. For a demo namespace, set `KATANA_NONPROD_NAMESPACES=katana-demo` (or a prefix pattern).
 
 ### Why does an image show unscanned / DENY when it exists in Artifactory?
 

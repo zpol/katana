@@ -81,8 +81,8 @@ func TestAnalyzePodSecurity_RunAsNonRootFalse(t *testing.T) {
 	nonRoot := false
 	pod := podObject{}
 	pod.Spec.Containers = []containerSpec{{
-		Name:  "app",
-		Image: "demo:latest",
+		Name:            "app",
+		Image:           "demo:latest",
 		SecurityContext: &securityContext{RunAsNonRoot: &nonRoot},
 	}}
 	ps := analyzePodSecurity(&pod)

@@ -17,22 +17,22 @@ const (
 
 // Config holds authentication settings loaded from environment.
 type Config struct {
-	Mode                 Mode
-	LegacyToken          string
-	SessionTTL           time.Duration
-	SecureCookies        bool
-	BootstrapAdminUser   string
-	BootstrapAdminPass   string
-	OIDCEnabled          bool
-	OIDCIssuer           string
-	OIDCClientID         string
-	OIDCClientSecret     string
-	OIDCRedirectURI      string
-	OIDCScopes           []string
-	OIDCGroupClaim       string
-	OIDCEmailClaim       string
-	OIDCAdminGroups      []string
-	OIDCReadonlyGroups   []string
+	Mode               Mode
+	LegacyToken        string
+	SessionTTL         time.Duration
+	SecureCookies      bool
+	BootstrapAdminUser string
+	BootstrapAdminPass string
+	OIDCEnabled        bool
+	OIDCIssuer         string
+	OIDCClientID       string
+	OIDCClientSecret   string
+	OIDCRedirectURI    string
+	OIDCScopes         []string
+	OIDCGroupClaim     string
+	OIDCEmailClaim     string
+	OIDCAdminGroups    []string
+	OIDCReadonlyGroups []string
 }
 
 // LoadConfig reads auth configuration from environment variables.

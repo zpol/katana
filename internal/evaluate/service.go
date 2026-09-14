@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/goxray/goxray/internal/detect"
-	"github.com/goxray/goxray/internal/imageutil"
-	"github.com/goxray/goxray/internal/jfrog"
-	"github.com/goxray/goxray/internal/policy"
-	"github.com/goxray/goxray/internal/policystore"
-	"github.com/goxray/goxray/internal/store"
+	"github.com/zpol/katana/internal/detect"
+	"github.com/zpol/katana/internal/imageutil"
+	"github.com/zpol/katana/internal/jfrog"
+	"github.com/zpol/katana/internal/policy"
+	"github.com/zpol/katana/internal/policystore"
+	"github.com/zpol/katana/internal/store"
 )
 
 // Request is an image evaluation request.
@@ -26,11 +26,11 @@ type Request struct {
 
 // Result is the evaluation outcome for one image.
 type Result struct {
-	Image     string             `json:"image"`
-	Registry  string             `json:"registry"`
-	Namespace string             `json:"namespace"`
-	Scan      *jfrog.ScanSummary `json:"scan"`
-	Decision  policy.Decision    `json:"decision"`
+	Image     string                 `json:"image"`
+	Registry  string                 `json:"registry"`
+	Namespace string                 `json:"namespace"`
+	Scan      *jfrog.ScanSummary     `json:"scan"`
+	Decision  policy.Decision        `json:"decision"`
 	Input     policy.EvaluationInput `json:"input"`
 }
 

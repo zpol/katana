@@ -23,4 +23,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: katana
-    namespace: katana-poc-system
+    namespace: katana-system

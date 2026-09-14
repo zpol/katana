@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/goxray/goxray/internal/store"
+	"github.com/zpol/katana/internal/store"
 )
 
 // New opens a policy store based on KATANA_POLICY_SOURCE (sqlite | crd).

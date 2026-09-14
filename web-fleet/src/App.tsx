@@ -41,7 +41,7 @@ export default function App() {
           <span className="mark" />
           <div>
             <h1>KATANA FLEET</h1>
-            <p>Corporate admission control · live posture</p>
+            <p>Multi-cluster admission control · live posture</p>
           </div>
         </div>
         <div className="top-right">

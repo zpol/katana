@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/goxray/goxray/internal/store"
+	"github.com/zpol/katana/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -332,7 +332,7 @@ func ClaimsJSON(claims map[string]interface{}) string {
 }
 
 func errUnauthorized(msg string) error { return &HTTPError{Code: http.StatusUnauthorized, Msg: msg} }
-func errForbidden(msg string) error   { return &HTTPError{Code: http.StatusForbidden, Msg: msg} }
+func errForbidden(msg string) error    { return &HTTPError{Code: http.StatusForbidden, Msg: msg} }
 
 // HTTPError is an auth error with HTTP status.
 type HTTPError struct {

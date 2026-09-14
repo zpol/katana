@@ -61,17 +61,17 @@ func TestEvaluate_ExceptionsSkipDeny(t *testing.T) {
 		Enabled:    true,
 		Action:     ActionDeny,
 		Match:      MatchCriteria{Severity: "critical"},
-		Exceptions: []string{"kube-system", "cattle-*"},
+		Exceptions: []string{"kube-system", "platform-*"},
 	}}
 	d := ev.Evaluate(policies, EvaluationInput{Severity: "critical", Namespace: "kube-system"})
 	if !d.Allowed || d.MatchedPolicy != "" {
 		t.Fatalf("exception should skip deny: %+v", d)
 	}
-	d2 := ev.Evaluate(policies, EvaluationInput{Severity: "critical", Namespace: "cattle-system"})
+	d2 := ev.Evaluate(policies, EvaluationInput{Severity: "critical", Namespace: "platform-monitoring"})
 	if !d2.Allowed {
 		t.Fatalf("wildcard exception should skip: %+v", d2)
 	}
-	d3 := ev.Evaluate(policies, EvaluationInput{Severity: "critical", Namespace: "payments"})
+	d3 := ev.Evaluate(policies, EvaluationInput{Severity: "critical", Namespace: "payments-demo"})
 	if d3.Allowed {
 		t.Fatalf("expected deny outside exceptions: %+v", d3)
 	}
@@ -84,7 +84,7 @@ func TestEvaluate_RegistryAllowlist(t *testing.T) {
 		Enabled: true,
 		Action:  ActionDeny,
 		Match: MatchCriteria{RegistryAllowlist: []string{
-			"artifactory.example.com", "*.dkr.ecr.eu-west-3.amazonaws.com",
+			"artifactory.example.com", "*.dkr.ecr.us-east-1.amazonaws.com",
 		}},
 	}}
 	// Exact allowlist only for containsFold — wildcards on registry are exact strings in MVP.
@@ -159,7 +159,7 @@ func TestEvaluate_UnsafePodSecurity(t *testing.T) {
 		Match:   MatchCriteria{UnsafePodSecurity: &unsafe},
 	}}
 	d := ev.Evaluate(policies, EvaluationInput{
-		Namespace: "demo",
+		Namespace:   "demo",
 		PodSecurity: PodSecurityAnalysis{RunAsRoot: true, Unsafe: true},
 	})
 	if d.Allowed || d.MatchedPolicy != "Deny Unsafe Pod Security" {

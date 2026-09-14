@@ -8,7 +8,7 @@
 
 Before a Pod lands in the cluster, KATANA asks **JFrog Xray** for vulnerability posture, matches configurable policies (`deny` / `warn` / `audit`), records detections, and can enforce the decision through a native **ValidatingAdmissionWebhook**. A separate **fleet** console aggregates Prometheus metrics across clusters.
 
-The git remote may still be named `goxray`; product identifiers in code, env vars (`KATANA_*`), and Kubernetes resources use **katana**.
+**Repository:** [github.com/zpol/katana](https://github.com/zpol/katana)
 
 **Documentation:** [docs/AUTH.md](docs/AUTH.md) (users, roles, dry-run banner) · [docs/SSO.md](docs/SSO.md) (OIDC) · [docs/policies.md](docs/policies.md) (ImagePolicy rules) · [docs/FLEET.md](docs/FLEET.md) (Prometheus + fleet dashboard)
 
@@ -38,7 +38,7 @@ More UI captures (policy editor, detections detail): [`docs/screenshots/`](docs/
 **Terminal 1 — API**
 
 ```bash
-cd /path/to/goxray          # clone path; remote name may still be goxray
+cd /path/to/katana
 cp -n .env.example .env     # edit locally; never commit secrets
 
 export PATH="$HOME/.local/node/bin:$PATH"
@@ -68,7 +68,7 @@ make dev
 **Terminal 2 — UI (hot reload, recommended while editing the UI)**
 
 ```bash
-cd /path/to/goxray/web
+cd /path/to/katana/web
 export PATH="$HOME/.local/node/bin:$PATH"
 npm install --omit=optional
 npm run dev
@@ -162,7 +162,7 @@ When an **image** is evaluated (manually or from a Pod admission):
      `default/<repo>/<path>/<tag>/list.manifest.json` and `manifest.json`.
 3. Derive highest severity (`critical` > `high` > `medium` > `low`).
 4. Load policies from **SQLite** (default) or **ImagePolicy CRDs** (`KATANA_POLICY_SOURCE=crd`) and run the evaluator (`deny` > `warn` > `audit` > default allow).
-5. Namespace **exceptions** (exact or `cattle-*` prefix) skip matching policies.
+5. Namespace **exceptions** (exact name or prefix wildcards like `platform-*`) skip matching policies.
 6. Persist a **detection** with optional **deploy outcome** (`deployed` / blocked / dry-run) when recording is on.
 7. Return decision to UI/API, or map it to `AdmissionResponse.allowed`.
 
@@ -200,8 +200,8 @@ KATANA talks to **JFrog Platform Xray** over HTTPS with a Bearer token (`JFROG_T
 ```json
 {
   "paths": [
-    "docker-quay-prod-remote-cache/brancz/kube-rbac-proxy/<tag>/list.manifest.json",
-    "default/docker-quay-prod-remote-cache/brancz/kube-rbac-proxy/<tag>/list.manifest.json"
+    "example-docker-remote/library/demo-proxy/<tag>/list.manifest.json",
+    "default/example-docker-remote/library/demo-proxy/<tag>/list.manifest.json"
   ],
   "checksums": ["sha256:…"]
 }
@@ -282,7 +282,7 @@ Each policy has:
 
 - `action`: `deny` | `warn` | `audit`
 - `match`: severity, environment, scanned flag, namespace allowlist, registry allowlist, pod security flags
-- `exceptions`: namespaces that skip this policy (`kube-system`, `katana-system`, `cattle-*`, …)
+- `exceptions`: namespaces that skip this policy (`kube-system`, `kube-public`, `kube-node-lease`, `katana-system`, …)
 
 **Seeded defaults** (see `configs/default-policies.yaml` and [`docs/policies.md`](docs/policies.md)):
 
@@ -363,7 +363,7 @@ flowchart TB
   subgraph layer2 [Layer 2 — Policy exceptions]
     Eval[Evaluator]
     WH --> Eval
-    Eval -->|skip| EX["kube-system, katana-system, cattle-*"]
+    Eval -->|skip| EX["kube-system, katana-system, …"]
     Eval -->|apply| POL[deny / warn / audit policies]
   end
 ```
@@ -405,13 +405,16 @@ namespaceSelector:
 Even when the webhook runs, each policy can **skip** namespaces via `exceptions`. Seeded defaults exclude platform namespaces from **Block Critical**, **Require Scanned Image**, etc.:
 
 - `kube-system`
+- `kube-public`
+- `kube-node-lease`
 - `katana-system`
-- `cattle-*` (prefix match)
+
+For Rancher-managed clusters, see optional exceptions in [`configs/examples/rancher-exceptions.yaml`](configs/examples/rancher-exceptions.yaml).
 
 Edit in the **Policies** UI or via API. Example: allow a dev namespace to bypass **Block Critical** while still auditing:
 
 ```json
-"exceptions": ["kube-system", "katana-system", "cattle-*", "my-dev-ns"]
+"exceptions": ["kube-system", "katana-system", "my-dev-ns"]
 ```
 
 #### Recommended rollout for a real cluster
@@ -520,7 +523,7 @@ flowchart LR
 | Exposure | **ClusterIP** for the webhook; expose the UI via internal Ingress only |
 | Secrets | External Secrets / Sealed Secrets for `JFROG_TOKEN`, `KATANA_TOKEN`; never bake into the image |
 | HA | Start 2 replicas once DB is moved off local SQLite emptyDir (see roadmap) |
-| Enforce scope | **Cluster-wide** Pod CREATE/UPDATE by default; `kube-system`, `katana-system`, and `cattle-*` excluded via policy exceptions. Optional per-NS opt-in: uncomment `namespaceSelector` in `deploy/k8s/katana.yaml`. |
+| Enforce scope | **Cluster-wide** Pod CREATE/UPDATE by default; `kube-system`, `kube-public`, `kube-node-lease`, and `katana-system` excluded via policy exceptions. Optional Rancher exceptions: [`configs/examples/rancher-exceptions.yaml`](configs/examples/rancher-exceptions.yaml). Optional per-NS opt-in: uncomment `namespaceSelector` in `deploy/k8s/katana.yaml`. |
 
 ### Prerequisites
 

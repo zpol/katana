@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goxray/goxray/internal/policy"
+	"github.com/zpol/katana/internal/policy"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 

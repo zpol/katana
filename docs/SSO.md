@@ -1,6 +1,6 @@
 # SSO with OIDC
 
-KATANA uses standard **OpenID Connect** authorization code flow. Any OIDC provider works (e.g. PingOne, Keycloak, Auth0) when exposed as an OIDC issuer.
+KATANA uses standard **OpenID Connect** authorization code flow. Any OIDC-compliant identity provider works when exposed as an OIDC issuer (generic OIDC, Okta, Microsoft Entra ID, PingOne, Keycloak, Auth0, and others).
 
 ## Configuration sources
 
@@ -26,7 +26,7 @@ KATANA uses standard **OpenID Connect** authorization code flow. Any OIDC provid
 ```bash
 KATANA_AUTH_MODE=hybrid          # or oidc
 KATANA_OIDC_ENABLED=true
-KATANA_OIDC_ISSUER=https://auth.example.com/<tenant>/as
+KATANA_OIDC_ISSUER=https://idp.example.com
 KATANA_OIDC_CLIENT_ID=<client-id>
 KATANA_OIDC_CLIENT_SECRET=<from-secret>
 KATANA_OIDC_REDIRECT_URI=https://<katana-host>/api/v1/auth/oidc/callback
@@ -36,8 +36,8 @@ KATANA_OIDC_REDIRECT_URI=https://<katana-host>/api/v1/auth/oidc/callback
 
 ```bash
 KATANA_OIDC_GROUP_CLAIM=groups
-KATANA_OIDC_ADMIN_GROUPS=katana-admins,platform-security-admins
-KATANA_OIDC_READONLY_GROUPS=katana-readers
+KATANA_OIDC_ADMIN_GROUPS=katana-admins,platform-admins
+KATANA_OIDC_READONLY_GROUPS=katana-readonly
 ```
 
 Evaluation order:
@@ -64,7 +64,7 @@ env:
   - name: KATANA_OIDC_ENABLED
     value: "true"
   - name: KATANA_OIDC_ISSUER
-    value: "https://auth.example.com/<tenant>/as"
+    value: "https://idp.example.com"
   - name: KATANA_OIDC_CLIENT_ID
     valueFrom:
       secretKeyRef:
@@ -80,14 +80,14 @@ env:
   - name: KATANA_OIDC_ADMIN_GROUPS
     value: "katana-admins"
   - name: KATANA_OIDC_READONLY_GROUPS
-    value: "katana-readers"
+    value: "katana-readonly"
 ```
 
 Register the redirect URI with your IdP exactly as deployed (including path `/api/v1/auth/oidc/callback`).
 
 ## OIDC provider setup checklist
 
-1. Create an OIDC web application in your IdP (e.g. PingOne, Keycloak).
+1. Create an OIDC web application in your IdP (generic OIDC, Okta, Microsoft Entra ID, PingOne, Keycloak, …).
 2. Set redirect URI to `https://<katana-external-url>/api/v1/auth/oidc/callback`.
 3. Enable scopes: `openid`, `profile`, `email`, and any scope required for groups.
 4. Configure groups claim in token (attribute name → `KATANA_OIDC_GROUP_CLAIM`).
@@ -118,7 +118,7 @@ Admins can view and edit non-secret SSO settings and run **Test connection** (OI
 | "oidc not configured" | `KATANA_OIDC_CLIENT_SECRET`, issuer, client ID, redirect URI all set; restart pod |
 | "no matching OIDC group" | User groups in token vs `KATANA_OIDC_*_GROUPS`; claim name |
 | "invalid oidc state" | Cookie blocked; ensure HTTPS and SameSite; retry login |
-| Discovery test fails | Issuer URL reachable from pod; corporate proxy if needed |
+| Discovery test fails | Issuer URL reachable from pod; HTTP/HTTPS proxy or custom CA if needed |
 | SSO button hidden | `GET /api/v1/config` → `oidc_enabled: true` |
 
 ## Local break-glass

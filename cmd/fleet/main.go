@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/goxray/goxray/internal/fleet"
+	"github.com/zpol/katana/internal/fleet"
 )
 
 func env(k, def string) string {

@@ -13,15 +13,15 @@ import (
 
 // User is a KATANA UI/API identity.
 type User struct {
-	ID           string `json:"id"`
-	Username     string `json:"username"`
-	Role         string `json:"role"`
-	Source       string `json:"source"`
-	Email        string `json:"email,omitempty"`
-	ExternalSub  string `json:"external_sub,omitempty"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
-	HasPassword  bool   `json:"has_password"`
+	ID          string `json:"id"`
+	Username    string `json:"username"`
+	Role        string `json:"role"`
+	Source      string `json:"source"`
+	Email       string `json:"email,omitempty"`
+	ExternalSub string `json:"external_sub,omitempty"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+	HasPassword bool   `json:"has_password"`
 }
 
 // Session represents an authenticated browser session.
@@ -320,16 +320,16 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 
 // SSOSettings holds non-secret OIDC overrides editable from the UI.
 type SSOSettings struct {
-	Enabled          bool     `json:"enabled"`
-	Issuer           string   `json:"issuer"`
-	ClientID         string   `json:"client_id"`
-	RedirectURI      string   `json:"redirect_uri"`
-	Scopes           []string `json:"scopes"`
-	GroupClaim       string   `json:"group_claim"`
-	EmailClaim       string   `json:"email_claim"`
-	AdminGroups      []string `json:"admin_groups"`
-	ReadonlyGroups   []string `json:"readonly_groups"`
-	ClientSecretSet  bool     `json:"client_secret_configured"`
+	Enabled         bool     `json:"enabled"`
+	Issuer          string   `json:"issuer"`
+	ClientID        string   `json:"client_id"`
+	RedirectURI     string   `json:"redirect_uri"`
+	Scopes          []string `json:"scopes"`
+	GroupClaim      string   `json:"group_claim"`
+	EmailClaim      string   `json:"email_claim"`
+	AdminGroups     []string `json:"admin_groups"`
+	ReadonlyGroups  []string `json:"readonly_groups"`
+	ClientSecretSet bool     `json:"client_secret_configured"`
 }
 
 const ssoSettingsKey = "sso"

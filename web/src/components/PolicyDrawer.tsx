@@ -70,7 +70,7 @@ export function PolicyDrawer({ policy, isNew, onClose, onSave }: Props) {
           </div>
         </div>
         <div className="field">
-          <label>Exceptions (namespaces, comma or newline; supports cattle-*)</label>
+          <label>Exceptions (namespaces, comma or newline; supports prefix wildcards like platform-*)</label>
           <textarea
             value={(draft.exceptions || []).join('\n')}
             onChange={(e) =>

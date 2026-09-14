@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goxray/goxray/internal/policy"
+	"github.com/zpol/katana/internal/policy"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

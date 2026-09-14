@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/goxray/goxray/internal/evaluate"
-	"github.com/goxray/goxray/internal/jfrog"
-	"github.com/goxray/goxray/internal/policy"
-	"github.com/goxray/goxray/internal/policystore"
-	"github.com/goxray/goxray/internal/store"
+	"github.com/zpol/katana/internal/evaluate"
+	"github.com/zpol/katana/internal/jfrog"
+	"github.com/zpol/katana/internal/policy"
+	"github.com/zpol/katana/internal/policystore"
+	"github.com/zpol/katana/internal/store"
 )
 
 func TestWriteReviewDenySetsFailureStatus(t *testing.T) {
@@ -72,7 +72,7 @@ func TestAdmitPodDenyIncludesFailureAndPolicyMessage(t *testing.T) {
 		"kind":"AdmissionReview",
 		"request":{
 			"uid":"deny-1",
-			"namespace":"katana-poc-demo",
+			"namespace":"katana-demo",
 			"kind":{"kind":"Pod"},
 			"object":{
 				"spec":{

@@ -3,7 +3,7 @@ package admission
 import (
 	"fmt"
 
-	"github.com/goxray/goxray/internal/policy"
+	"github.com/zpol/katana/internal/policy"
 )
 
 type securityContext struct {
