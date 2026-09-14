@@ -147,7 +147,7 @@ webhooks:
         resources: ["pods", "pods/ephemeralcontainers"]
         scope: Namespaced
     # Cluster-wide by default. System namespaces are excluded via policy exceptions
-    # (kube-system, katana-system, cattle-*). To opt-in per namespace instead, add:
+    # (kube-system, kube-public, kube-node-lease, katana-system). To opt-in per namespace instead, add:
     # namespaceSelector:
     #   matchExpressions:
     #     - key: katana.dev/enforce

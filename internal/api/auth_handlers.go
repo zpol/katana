@@ -8,8 +8,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/goxray/goxray/internal/auth"
-	"github.com/goxray/goxray/internal/store"
+	"github.com/zpol/katana/internal/auth"
+	"github.com/zpol/katana/internal/store"
 )
 
 // Config GET /api/v1/config — public runtime flags for the UI.

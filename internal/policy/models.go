@@ -37,9 +37,9 @@ type Policy struct {
 	// DenyMessage is shown to developers when this policy blocks admission (supports {image}, {policy}, …).
 	DenyMessage string `json:"deny_message,omitempty"`
 	// WarnMessage is shown as an admission warning when action is warn.
-	WarnMessage string `json:"warn_message,omitempty"`
-	CreatedAt   time.Time     `json:"created_at"`
-	UpdatedAt   time.Time     `json:"updated_at"`
+	WarnMessage string    `json:"warn_message,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // EvaluationInput is the subject under evaluation.

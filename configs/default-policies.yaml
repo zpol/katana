@@ -8,9 +8,9 @@ policies:
       Upgrade the base image or contact your platform security team for an exception.
     exceptions:
       - kube-system
+      - kube-public
+      - kube-node-lease
       - katana-system
-      - katana-poc-system
-      - cattle-*
     match:
       severity: critical
   - name: Block High in Prod
@@ -22,9 +22,9 @@ policies:
       Use a patched image version or deploy to a non-prod namespace for testing.
     exceptions:
       - kube-system
+      - kube-public
+      - kube-node-lease
       - katana-system
-      - katana-poc-system
-      - cattle-*
     match:
       severity: high
       environment: prod
@@ -37,22 +37,22 @@ policies:
       Ensure the image is scanned in Artifactory/Xray before deploying.
     exceptions:
       - kube-system
+      - kube-public
+      - kube-node-lease
       - katana-system
-      - katana-poc-system
-      - cattle-*
     match:
       scanned: false
   - name: Allowlist System NS
-    description: Audit-only log of Pods in platform namespaces (kube-system, katana-system, katana-poc-system, cattle-*). Does not allow or block; deny exceptions do that. Safe to disable if you only need enforcement.
+    description: Audit-only log of Pods in platform namespaces (kube-system, kube-public, kube-node-lease, katana-system). Does not allow or block; deny exceptions do that. Safe to disable if you only need enforcement.
     enabled: true
     action: audit
     warn_message: "System namespace activity recorded. Policy: {policy}."
     match:
       namespace_allowlist:
         - kube-system
+        - kube-public
+        - kube-node-lease
         - katana-system
-        - katana-poc-system
-        - cattle-*
   - name: Registry Allowlist
     description: Deny images not from approved registries
     enabled: true
@@ -62,13 +62,13 @@ policies:
       Pull from artifactory.example.com or an approved registry.
     exceptions:
       - kube-system
+      - kube-public
+      - kube-node-lease
       - katana-system
-      - katana-poc-system
-      - cattle-*
     match:
       registry_allowlist:
         - artifactory.example.com
-        - 123456789012.dkr.ecr.eu-west-3.amazonaws.com
+        - 123456789012.dkr.ecr.us-east-1.amazonaws.com
   - name: Deny Unsafe Pod Security
     description: Deny privileged containers, root (UID 0), or allowPrivilegeEscalation
     enabled: true
@@ -78,8 +78,8 @@ policies:
       Do not run as root (UID 0), privileged, or with allowPrivilegeEscalation.
     exceptions:
       - kube-system
+      - kube-public
+      - kube-node-lease
       - katana-system
-      - katana-poc-system
-      - cattle-*
     match:
       unsafe_pod_security: true

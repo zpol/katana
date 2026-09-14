@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/goxray/goxray/internal/policy"
+	"github.com/zpol/katana/internal/policy"
 )
 
 // Store loads and persists admission policies (SQLite or Kubernetes CRDs).

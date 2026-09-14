@@ -19,7 +19,7 @@ const emptyPolicy = (): Policy => ({
   enabled: true,
   action: 'deny',
   match: { severity: 'critical' },
-  exceptions: ['kube-system', 'katana-system', 'katana-poc-system', 'cattle-*'],
+  exceptions: ['kube-system', 'kube-public', 'kube-node-lease', 'katana-system'],
   deny_message: `Image {image} has CRITICAL vulnerabilities (JFrog Xray). Policy: {policy}.
 Upgrade the base image or contact your platform security team for an exception.`,
   created_at: '',

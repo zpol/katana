@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goxray/goxray/internal/evaluate"
-	"github.com/goxray/goxray/internal/metrics"
-	"github.com/goxray/goxray/internal/policy"
+	"github.com/zpol/katana/internal/evaluate"
+	"github.com/zpol/katana/internal/metrics"
+	"github.com/zpol/katana/internal/policy"
 )
 
 const (
@@ -67,9 +67,9 @@ func admissionMaxInflight() int {
 }
 
 type admissionReview struct {
-	APIVersion string            `json:"apiVersion"`
-	Kind       string            `json:"kind"`
-	Request    *admissionRequest `json:"request,omitempty"`
+	APIVersion string             `json:"apiVersion"`
+	Kind       string             `json:"kind"`
+	Request    *admissionRequest  `json:"request,omitempty"`
 	Response   *admissionResponse `json:"response,omitempty"`
 }
 

@@ -11,7 +11,7 @@ export interface PolicyTemplate {
   exceptions: string[]
 }
 
-const defaultExceptions = ['kube-system', 'katana-system', 'katana-poc-system', 'cattle-*']
+const defaultExceptions = ['kube-system', 'kube-public', 'kube-node-lease', 'katana-system']
 
 export const MESSAGE_VARS = '{policy} {image} {severity} {environment} {namespace} {registry} {reason}'
 
@@ -54,7 +54,7 @@ Ensure the image is scanned in Artifactory/Xray before deploying.`,
     match: {
       registry_allowlist: [
         'artifactory.example.com',
-        '123456789012.dkr.ecr.eu-west-3.amazonaws.com',
+        '123456789012.dkr.ecr.us-east-1.amazonaws.com',
       ],
     },
     deny_message: `Image {image} uses registry "{registry}" which is not on the approved list. Policy: {policy}.
@@ -77,7 +77,7 @@ Do not run as root (UID 0), privileged, or with allowPrivilegeEscalation.`,
     description: 'Audit-only log in platform namespaces. Does not allow or block; deny exceptions do that.',
     action: 'audit',
     match: {
-      namespace_allowlist: ['kube-system', 'katana-system', 'katana-poc-system', 'cattle-*'],
+      namespace_allowlist: ['kube-system', 'kube-public', 'kube-node-lease', 'katana-system'],
     },
     warn_message: 'System namespace activity recorded. Policy: {policy}.',
     exceptions: [],

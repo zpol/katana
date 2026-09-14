@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goxray/goxray/internal/metrics"
+	"github.com/zpol/katana/internal/metrics"
 )
 
 // ArtifactRef identifies an artifact in Artifactory / Xray.
@@ -155,7 +155,7 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 		ResponseHeaderTimeout: headerWait,
 		ExpectContinueTimeout: 2 * time.Second,
 		IdleConnTimeout:       90 * time.Second,
-		// HTTP/2 through corporate SSL inspection proxies often hangs
+		// HTTP/2 through TLS-inspecting proxies often hangs
 		// until Client.Timeout with "awaiting headers".
 		ForceAttemptHTTP2: false,
 	}
@@ -568,7 +568,9 @@ func trimFirstSeg(s string) string {
 }
 
 // xrayProjectPrefix maps Artifactory docker repo names to Xray path prefixes.
-// e.g. myproj-docker-prod-local -> myproj (Xray indexes under project slug, not full repo name).
+// Example: example-docker-local -> example (Xray often indexes under the project
+// slug, not the full repository key). Reserved first segments docker/k8s/global
+// are left unchanged so shared remote/cache repos keep their Artifactory path.
 func xrayProjectPrefix(repo string) string {
 	const marker = "-docker-"
 	i := strings.Index(repo, marker)

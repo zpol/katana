@@ -15,9 +15,9 @@ spec:
     Upgrade the base image or contact your platform security team for an exception.
   exceptions:
     - kube-system
+    - kube-public
+    - kube-node-lease
     - katana-system
-    - katana-poc-system
-    - cattle-*
   match:
     severity: critical
 ---
@@ -35,9 +35,9 @@ spec:
     Use a patched image version or deploy to a non-prod namespace for testing.
   exceptions:
     - kube-system
+    - kube-public
+    - kube-node-lease
     - katana-system
-    - katana-poc-system
-    - cattle-*
   match:
     severity: high
     environment: prod
@@ -56,9 +56,9 @@ spec:
     Ensure the image is scanned in Artifactory/Xray before deploying.
   exceptions:
     - kube-system
+    - kube-public
+    - kube-node-lease
     - katana-system
-    - katana-poc-system
-    - cattle-*
   match:
     scanned: false
 ---
@@ -68,16 +68,16 @@ metadata:
   name: allowlist-system-ns
 spec:
   displayName: Allowlist System NS
-  description: Audit-only log of Pods in platform namespaces (kube-system, katana-system, katana-poc-system, cattle-*). Does not allow or block; deny exceptions do that. Safe to disable if you only need enforcement.
+  description: Audit-only log of Pods in platform namespaces (kube-system, kube-public, kube-node-lease, katana-system). Does not allow or block; deny exceptions do that. Safe to disable if you only need enforcement.
   enabled: true
   action: audit
   warnMessage: "System namespace activity recorded. Policy: {policy}."
   match:
     namespaceAllowlist:
       - kube-system
+      - kube-public
+      - kube-node-lease
       - katana-system
-      - katana-poc-system
-      - cattle-*
 ---
 apiVersion: katana.dev/v1alpha1
 kind: ImagePolicy
@@ -93,13 +93,13 @@ spec:
     Pull from artifactory.example.com or an approved registry.
   exceptions:
     - kube-system
+    - kube-public
+    - kube-node-lease
     - katana-system
-    - katana-poc-system
-    - cattle-*
   match:
     registryAllowlist:
       - artifactory.example.com
-      - 123456789012.dkr.ecr.eu-west-3.amazonaws.com
+      - 123456789012.dkr.ecr.us-east-1.amazonaws.com
 ---
 apiVersion: katana.dev/v1alpha1
 kind: ImagePolicy
@@ -115,8 +115,8 @@ spec:
     Do not run as root (UID 0), privileged, or with allowPrivilegeEscalation.
   exceptions:
     - kube-system
+    - kube-public
+    - kube-node-lease
     - katana-system
-    - katana-poc-system
-    - cattle-*
   match:
     unsafePodSecurity: true

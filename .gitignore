@@ -41,5 +41,5 @@ web-fleet/dist/
 # Unreferenced UI captures (do not ship)
 web/public/screenshot*.png
 
-# Org-private PoC assets (not for public OSS tree)
-se-internal/
+# private PoC assets 
+xx-internal/

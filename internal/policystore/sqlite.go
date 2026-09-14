@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 
-	"github.com/goxray/goxray/internal/policy"
-	"github.com/goxray/goxray/internal/store"
+	"github.com/zpol/katana/internal/policy"
+	"github.com/zpol/katana/internal/store"
 )
 
 // SQLite wraps store.Store policy methods.

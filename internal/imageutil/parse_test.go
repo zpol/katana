@@ -11,7 +11,7 @@ func TestParse(t *testing.T) {
 	if r2.Registry != "docker.io" || r2.Name != "nginx" || r2.Tag != "latest" {
 		t.Fatalf("unexpected: %+v", r2)
 	}
-	r3 := Parse("a.dkr.ecr.eu-west-3.amazonaws.com/pause@sha256:abc")
+	r3 := Parse("123456789012.dkr.ecr.us-east-1.amazonaws.com/pause@sha256:abc")
 	if r3.Digest != "sha256:abc" || r3.Name != "pause" {
 		t.Fatalf("unexpected: %+v", r3)
 	}

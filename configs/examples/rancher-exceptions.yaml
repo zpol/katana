@@ -1,0 +1,16 @@
+# Optional: namespace exceptions for Rancher-managed clusters.
+#
+# KATANA policy exceptions support exact names and prefix wildcards
+# (e.g. "cattle-*"). Merge these into your ImagePolicy / SQLite policy
+# `exceptions` (and into Allowlist System NS `namespace_allowlist` if desired)
+# when running on Rancher so platform agents are not denied.
+#
+# This file is an EXAMPLE only — it is not applied by default.
+exceptions:
+  - cattle-system
+  - cattle-fleet-system
+  - cattle-fleet-local-system
+  - cattle-monitoring-system
+  - cattle-logging-system
+  - cattle-impersonation-system
+  - cattle-*

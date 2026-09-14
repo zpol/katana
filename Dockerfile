@@ -26,7 +26,7 @@ COPY --from=web /src/web/dist ./web/dist
 COPY --from=web-fleet /src/web-fleet/dist ./web-fleet/dist
 ARG KATANA_VERSION=0.5.0
 RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags "-X github.com/goxray/goxray/internal/version.Version=${KATANA_VERSION}" \
+    -ldflags "-X github.com/zpol/katana/internal/version.Version=${KATANA_VERSION}" \
     -o /out/katana ./cmd/katana
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /out/fleet ./cmd/fleet

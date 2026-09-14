@@ -30,7 +30,7 @@ export function EvaluatePage() {
         <p>Runs policy evaluation using Xray data when JFROG_* is configured on the server.</p>
         <p className="field-hint">
           Xray lookup can take 30–90s depending on the image. Wait for the result; do not refresh.
-          Port-forward: <code>kubectl -n katana-poc-system port-forward svc/katana 8443:443</code> then open{' '}
+          Port-forward: <code>kubectl -n katana-system port-forward svc/katana 8443:443</code> then open{' '}
           <code>https://127.0.0.1:8443</code> (HTTPS).
         </p>
         <div className="field">

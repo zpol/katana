@@ -50,10 +50,10 @@ var (
 	}, []string{"cluster", "policy", "action"})
 
 	admissionDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "admission_duration_seconds",
-		Help:      "Admission review duration.",
-		Buckets:   []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 12},
+		Namespace:   namespace,
+		Name:        "admission_duration_seconds",
+		Help:        "Admission review duration.",
+		Buckets:     []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 12},
 		ConstLabels: prometheus.Labels{"cluster": cluster},
 	})
 
@@ -64,10 +64,10 @@ var (
 	}, []string{"cluster", "status"})
 
 	xrayLookupDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "xray_lookup_duration_seconds",
-		Help:      "JFrog Xray lookup duration.",
-		Buckets:   []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32},
+		Namespace:   namespace,
+		Name:        "xray_lookup_duration_seconds",
+		Help:        "JFrog Xray lookup duration.",
+		Buckets:     []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32},
 		ConstLabels: prometheus.Labels{"cluster": cluster},
 	})
 

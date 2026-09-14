@@ -53,7 +53,7 @@ base64 -w0 deploy/certs/tls.crt
 
 **Option A — All namespaces (default, recommended for full coverage)**
 
-Leave `namespaceSelector` **commented out** in `k8s/katana.yaml`. Every Pod in the cluster is evaluated. Platform namespaces are still excluded from deny rules via policy `exceptions` (`kube-system`, `katana-system`, `cattle-*`).
+Leave `namespaceSelector` **commented out** in `k8s/katana.yaml`. Every Pod in the cluster is evaluated. Platform namespaces are still excluded from deny rules via policy `exceptions` (`kube-system`, `kube-public`, `kube-node-lease`, `katana-system`). Optional Rancher exceptions: [`../configs/examples/rancher-exceptions.yaml`](../configs/examples/rancher-exceptions.yaml).
 
 **Option B — Opt-in namespaces only (pilot)**
 

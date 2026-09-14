@@ -60,13 +60,13 @@ export function RuleBuilder({ draft, onChange }: Props) {
       case 'registry':
         updateMatch({
           ...base,
-          registry_allowlist: ['artifactory.example.com', '123456789012.dkr.ecr.eu-west-3.amazonaws.com'],
+          registry_allowlist: ['artifactory.example.com', '123456789012.dkr.ecr.us-east-1.amazonaws.com'],
         })
         break
       case 'namespace':
         updateMatch({
           ...base,
-          namespace_allowlist: ['kube-system', 'katana-system', 'katana-poc-system', 'cattle-*'],
+          namespace_allowlist: ['kube-system', 'kube-public', 'kube-node-lease', 'katana-system'],
         })
         break
       default:
@@ -211,7 +211,7 @@ export function RuleBuilder({ draft, onChange }: Props) {
       )}
 
       {ruleKind === 'registry' && listField('Approved registries (one per line)', 'registry_allowlist')}
-      {ruleKind === 'namespace' && listField('Namespaces (one per line; supports cattle-*)', 'namespace_allowlist')}
+      {ruleKind === 'namespace' && listField('Namespaces (one per line; supports prefix wildcards like platform-*)', 'namespace_allowlist')}
 
       <div className="rule-section">
         <h3>Developer message</h3>

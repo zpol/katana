@@ -12,28 +12,28 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/goxray/goxray/internal/admission"
-	"github.com/goxray/goxray/internal/auth"
-	"github.com/goxray/goxray/internal/detect"
-	"github.com/goxray/goxray/internal/evaluate"
-	"github.com/goxray/goxray/internal/jfrog"
-	"github.com/goxray/goxray/internal/metrics"
-	"github.com/goxray/goxray/internal/policy"
-	"github.com/goxray/goxray/internal/policystore"
-	"github.com/goxray/goxray/internal/store"
+	"github.com/zpol/katana/internal/admission"
+	"github.com/zpol/katana/internal/auth"
+	"github.com/zpol/katana/internal/detect"
+	"github.com/zpol/katana/internal/evaluate"
+	"github.com/zpol/katana/internal/jfrog"
+	"github.com/zpol/katana/internal/metrics"
+	"github.com/zpol/katana/internal/policy"
+	"github.com/zpol/katana/internal/policystore"
+	"github.com/zpol/katana/internal/store"
 )
 
 // Server holds API dependencies.
 type Server struct {
-	Store            *store.Store
-	Policies         policystore.Store
-	PolicySource     string
-	Eval             *evaluate.Service
-	JFrog            jfrog.Client
-	Admit            *admission.Handler
-	Auth             *auth.Service
-	AdmissionDryRun  bool
-	Version          string
+	Store           *store.Store
+	Policies        policystore.Store
+	PolicySource    string
+	Eval            *evaluate.Service
+	JFrog           jfrog.Client
+	Admit           *admission.Handler
+	Auth            *auth.Service
+	AdmissionDryRun bool
+	Version         string
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {

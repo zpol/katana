@@ -6,9 +6,9 @@ import (
 )
 
 func TestDockerManifestPathsProjectRepo(t *testing.T) {
-	image := "artifactory.example.com/myproj-docker-prod-local/build-docker-images/dev/generic-base:1.5.7"
+	image := "artifactory.example.com/example-docker-local/demo/app:1.0"
 	paths := dockerManifestPaths(image)
-	want := "myproj/build-docker-images/dev/generic-base/1.5.7/manifest.json"
+	want := "example/demo/app/1.0/manifest.json"
 	found := false
 	for _, p := range paths {
 		if p == want {
@@ -22,9 +22,11 @@ func TestDockerManifestPathsProjectRepo(t *testing.T) {
 }
 
 func TestDockerManifestPathsSharedRepoUnchanged(t *testing.T) {
-	image := "artifactory.example.com/docker-prod-remote-cache/nginxinc/nginx-unprivileged:1.29-alpine-slim"
+	// Repos whose first segment is a reserved slug (docker-/k8s-/global-) do not
+	// get an extra Xray project-prefix alias.
+	image := "artifactory.example.com/docker-remote-cache/nginxinc/nginx-unprivileged:1.29-alpine-slim"
 	paths := dockerManifestPaths(image)
-	want := "docker-prod-remote-cache/nginxinc/nginx-unprivileged/1.29-alpine-slim/list.manifest.json"
+	want := "docker-remote-cache/nginxinc/nginx-unprivileged/1.29-alpine-slim/list.manifest.json"
 	found := false
 	for _, p := range paths {
 		if p == want {
@@ -37,15 +39,15 @@ func TestDockerManifestPathsSharedRepoUnchanged(t *testing.T) {
 	}
 	for _, p := range paths {
 		if strings.HasPrefix(p, "docker/") {
-			t.Fatalf("shared repo must not get docker/ project alias: %q", p)
+			t.Fatalf("reserved-slug repo must not get project alias: %q", p)
 		}
 	}
 }
 
 func TestDockerManifestPathsFederatedRepo(t *testing.T) {
-	image := "artifactory.example.com/team-docker-dev-federated/legacy-registry/demo-app:latest"
+	image := "artifactory.example.com/demo-docker-dev/legacy-registry/demo-app:latest"
 	paths := dockerManifestPaths(image)
-	want := "team-docker-dev-federated/legacy-registry/demo-app/latest/manifest.json"
+	want := "demo-docker-dev/legacy-registry/demo-app/latest/manifest.json"
 	if len(paths) == 0 || paths[0] != want {
 		t.Fatalf("expected first path %q, got %v", want, paths)
 	}
@@ -53,10 +55,11 @@ func TestDockerManifestPathsFederatedRepo(t *testing.T) {
 
 func TestXrayProjectPrefix(t *testing.T) {
 	cases := map[string]string{
-		"myproj-docker-prod-local":       "myproj",
-		"docker-prod-remote-cache":       "",
-		"k8s-docker-prod-remote":         "",
-		"docker-quay-prod-remote-cache":  "",
+		"example-docker-local": "example",
+		"demo-docker-prod":     "demo",
+		"docker-remote-cache":  "",
+		"k8s-docker-remote":    "",
+		"example-quay-cache":   "",
 	}
 	for repo, want := range cases {
 		if got := xrayProjectPrefix(repo); got != want {

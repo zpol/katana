@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/goxray/goxray/internal/detect"
-	"github.com/goxray/goxray/internal/policy"
+	"github.com/zpol/katana/internal/detect"
+	"github.com/zpol/katana/internal/policy"
 
 	_ "modernc.org/sqlite"
 )
@@ -94,7 +94,7 @@ CREATE INDEX IF NOT EXISTS idx_detections_env ON detections(environment);
 	return nil
 }
 
-var defaultSystemExceptions = []string{"kube-system", "katana-system", "katana-poc-system", "cattle-*"}
+var defaultSystemExceptions = []string{"kube-system", "kube-public", "kube-node-lease", "katana-system"}
 
 // SeedDefaults inserts default policies and sample detections when empty.
 func (s *Store) SeedDefaults(ctx context.Context) error {
@@ -160,11 +160,11 @@ func (s *Store) seedPolicies(ctx context.Context) error {
 		},
 		{
 			Name:        "Allowlist System NS",
-			Description: "Audit-only log of Pods in platform namespaces (kube-system, katana-system, katana-poc-system, cattle-*). Does not allow or block; deny exceptions do that. Safe to disable if you only need enforcement.",
+			Description: "Audit-only log of Pods in platform namespaces (kube-system, kube-public, kube-node-lease, katana-system). Does not allow or block; deny exceptions do that. Safe to disable if you only need enforcement.",
 			Enabled:     true,
 			Action:      policy.ActionAudit,
 			Match: policy.MatchCriteria{NamespaceAllowlist: []string{
-				"kube-system", "katana-system", "katana-poc-system", "cattle-*",
+				"kube-system", "kube-public", "kube-node-lease", "katana-system",
 			}},
 			WarnMessage: defaultMsgs["Allowlist System NS"],
 		},
@@ -175,7 +175,7 @@ func (s *Store) seedPolicies(ctx context.Context) error {
 			Action:      policy.ActionDeny,
 			Match: policy.MatchCriteria{RegistryAllowlist: []string{
 				"artifactory.example.com",
-				"123456789012.dkr.ecr.eu-west-3.amazonaws.com",
+				"123456789012.dkr.ecr.us-east-1.amazonaws.com",
 			}},
 			Exceptions:  append([]string{}, defaultSystemExceptions...),
 			DenyMessage: defaultMsgs["Registry Allowlist"],
@@ -202,12 +202,12 @@ func (s *Store) seedDetections(ctx context.Context) error {
 	samples := []detect.Detection{
 		{
 			Title: "Critical CVE in base image", Description: "CVE-2024-0001 in openssl — policy: Block Critical",
-			Severity: detect.SeverityCritical, Environment: "prod", Namespace: "payments",
+			Severity: detect.SeverityCritical, Environment: "prod", Namespace: "payments-demo",
 			Registry: "evil.example", Image: "evil.example/pay:1.0", Scanned: true, Source: "seed",
 		},
 		{
 			Title: "High severity package", Description: "CVE-2024-1002 in libxyz — policy: Block High in Prod",
-			Severity: detect.SeverityHigh, Environment: "prod", Namespace: "api",
+			Severity: detect.SeverityHigh, Environment: "prod", Namespace: "api-demo",
 			Registry: "artifactory.example.com", Image: "artifactory.example.com/api:2.1", Scanned: true, Source: "seed",
 		},
 		{
@@ -218,8 +218,8 @@ func (s *Store) seedDetections(ctx context.Context) error {
 		{
 			Title: "Kube-system informational", Description: "Audit trail for system NS traffic",
 			Severity: detect.SeverityLow, Environment: "prod", Namespace: "kube-system",
-			Registry: "123456789012.dkr.ecr.eu-west-3.amazonaws.com",
-			Image:    "123456789012.dkr.ecr.eu-west-3.amazonaws.com/pause:3.9",
+			Registry: "123456789012.dkr.ecr.us-east-1.amazonaws.com",
+			Image:    "123456789012.dkr.ecr.us-east-1.amazonaws.com/pause:3.9",
 			Scanned:  true, Source: "seed",
 		},
 	}
@@ -577,13 +577,13 @@ func scanPolicy(row scannable) (policy.Policy, error) {
 
 func scanDetection(row scannable) (detect.Detection, error) {
 	var (
-		d           detect.Detection
-		severity    string
-		scanned     int
+		d            detect.Detection
+		severity     string
+		scanned      int
 		policyAction string
-		deployedRaw sql.NullInt64
-		dryRun      int
-		createdRaw  string
+		deployedRaw  sql.NullInt64
+		dryRun       int
+		createdRaw   string
 	)
 	if err := row.Scan(
 		&d.ID, &d.Title, &d.Description, &severity, &d.Environment, &d.Namespace,

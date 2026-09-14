@@ -1,4 +1,4 @@
-module github.com/goxray/goxray
+module github.com/zpol/katana
 
 go 1.27
 

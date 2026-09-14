@@ -80,10 +80,10 @@ func samplesOrRaw(samples func(string) []promSample, window, by, metric, extra s
 func (s *Server) buildOverview(ctx context.Context, window string) Overview {
 	window = windowRange(window)
 	ov := Overview{
-		Window:      window,
-		GeneratedAt: time.Now().UTC(),
-		Clusters:    []Cluster{},
-		Posture:     []Segment{},
+		Window:        window,
+		GeneratedAt:   time.Now().UTC(),
+		Clusters:      []Cluster{},
+		Posture:       []Segment{},
 		ClusterHealth: []Segment{},
 		ScanCoverage:  []Segment{},
 		Policies:      []Segment{},

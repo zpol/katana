@@ -1,4 +1,4 @@
-module github.com/goxray/goxray/demo/dummy-jfrog
+module github.com/zpol/katana/demo/dummy-jfrog
 
 go 1.27
 

@@ -13,17 +13,17 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/goxray/goxray/internal/admission"
-	"github.com/goxray/goxray/internal/api"
-	"github.com/goxray/goxray/internal/auth"
-	"github.com/goxray/goxray/internal/evaluate"
-	"github.com/goxray/goxray/internal/jfrog"
-	"github.com/goxray/goxray/internal/metrics"
-	"github.com/goxray/goxray/internal/policy"
-	"github.com/goxray/goxray/internal/policystore"
-	"github.com/goxray/goxray/internal/store"
-	"github.com/goxray/goxray/internal/version"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/zpol/katana/internal/admission"
+	"github.com/zpol/katana/internal/api"
+	"github.com/zpol/katana/internal/auth"
+	"github.com/zpol/katana/internal/evaluate"
+	"github.com/zpol/katana/internal/jfrog"
+	"github.com/zpol/katana/internal/metrics"
+	"github.com/zpol/katana/internal/policy"
+	"github.com/zpol/katana/internal/policystore"
+	"github.com/zpol/katana/internal/store"
+	"github.com/zpol/katana/internal/version"
 )
 
 func main() {

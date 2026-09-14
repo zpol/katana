@@ -43,16 +43,16 @@ type Filter struct {
 
 // StatsSummary aggregates admission and detection metrics for the dashboard.
 type StatsSummary struct {
-	TotalEvents       int            `json:"total_events"`
-	AdmissionEvents   int            `json:"admission_events"`
-	Deployed          int            `json:"deployed"`
-	Blocked           int            `json:"blocked"`
-	DryRunWouldDeny   int            `json:"dry_run_would_deny"`
-	DeployedPct       float64        `json:"deployed_pct"`
-	BlockedPct        float64        `json:"blocked_pct"`
-	BySeverity        map[string]int `json:"by_severity"`
-	ByNamespace       map[string]int `json:"by_namespace"`
-	ByPolicyAction    map[string]int `json:"by_policy_action"`
-	ScannedCount      int            `json:"scanned_count"`
-	UnscannedCount    int            `json:"unscanned_count"`
+	TotalEvents     int            `json:"total_events"`
+	AdmissionEvents int            `json:"admission_events"`
+	Deployed        int            `json:"deployed"`
+	Blocked         int            `json:"blocked"`
+	DryRunWouldDeny int            `json:"dry_run_would_deny"`
+	DeployedPct     float64        `json:"deployed_pct"`
+	BlockedPct      float64        `json:"blocked_pct"`
+	BySeverity      map[string]int `json:"by_severity"`
+	ByNamespace     map[string]int `json:"by_namespace"`
+	ByPolicyAction  map[string]int `json:"by_policy_action"`
+	ScannedCount    int            `json:"scanned_count"`
+	UnscannedCount  int            `json:"unscanned_count"`
 }
