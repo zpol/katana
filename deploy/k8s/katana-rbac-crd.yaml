@@ -1,0 +1,26 @@
+# RBAC for KATANA when KATANA_POLICY_SOURCE=crd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: katana-imagepolicies
+rules:
+  - apiGroups: ["katana.dev"]
+    resources: ["imagepolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: katana-imagepolicies
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: katana-imagepolicies
+subjects:
+  - kind: ServiceAccount
+    name: katana
+    namespace: katana-poc-system

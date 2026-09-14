@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dummy-jfrog
+  namespace: katana-system
+  labels:
+    app: dummy-jfrog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dummy-jfrog
+  template:
+    metadata:
+      labels:
+        app: dummy-jfrog
+    spec:
+      containers:
+        - name: dummy-jfrog
+          image: dummy-jfrog:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8081
+          env:
+            - name: DUMMY_JFROG_ADDR
+              value: ":8081"
+            - name: DUMMY_JFROG_CATALOG
+              value: /catalog/catalog.yaml
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dummy-jfrog
+  namespace: katana-system
+spec:
+  selector:
+    app: dummy-jfrog
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http

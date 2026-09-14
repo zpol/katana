@@ -1,0 +1,39 @@
+# Demo Xray catalog — matched against paths sent by KATANA's JFrog client.
+# First matching entry wins (substring match, case-insensitive).
+
+entries:
+  - match: demo/clean
+    indexed: true
+    issues: []
+
+  - match: demo/high
+    indexed: true
+    issues:
+      - severity: High
+        issue_id: CVE-2024-DEMO-HIGH-1
+        summary: Demo high severity finding
+      - severity: High
+        issue_id: CVE-2024-DEMO-HIGH-2
+        summary: Another demo high finding
+      - severity: Medium
+        issue_id: CVE-2024-DEMO-MED-1
+        summary: Demo medium finding
+
+  - match: demo/critical
+    indexed: true
+    issues:
+      - severity: Critical
+        issue_id: CVE-2024-DEMO-CRIT-1
+        summary: Demo critical severity finding
+      - severity: Critical
+        issue_id: CVE-2024-DEMO-CRIT-2
+        summary: Second demo critical finding
+      - severity: High
+        issue_id: CVE-2024-DEMO-HIGH-3
+        summary: Accompanying high finding
+
+  - match: demo/unscanned
+    indexed: false
+
+  - match: demo/unavailable
+    http_status: 503

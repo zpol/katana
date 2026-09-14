@@ -1,0 +1,97 @@
+# Example workloads for the k3d demo (non-root so CVE policies fire).
+# Images are fictional — expect ErrImagePull after admission; that is OK.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-critical
+  namespace: katana-demo
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: main
+      image: artifactory.example.com/demo/critical:1.0
+      imagePullPolicy: IfNotPresent
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1000
+        capabilities:
+          drop: ["ALL"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-clean
+  namespace: katana-demo
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: main
+      image: artifactory.example.com/demo/clean:1.0
+      imagePullPolicy: IfNotPresent
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1000
+        capabilities:
+          drop: ["ALL"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-high
+  namespace: katana-demo
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: main
+      image: artifactory.example.com/demo/high:1.0
+      imagePullPolicy: IfNotPresent
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1000
+        capabilities:
+          drop: ["ALL"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-unscanned
+  namespace: katana-demo
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: main
+      image: artifactory.example.com/demo/unscanned:1.0
+      imagePullPolicy: IfNotPresent
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1000
+        capabilities:
+          drop: ["ALL"]

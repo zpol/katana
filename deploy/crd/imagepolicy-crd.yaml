@@ -1,0 +1,96 @@
+# Cluster-scoped ImagePolicy CRD — policy definitions for KATANA admission.
+# Apply: kubectl apply -f deploy/crd/imagepolicy-crd.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: imagepolicies.katana.dev
+spec:
+  group: katana.dev
+  names:
+    kind: ImagePolicy
+    listKind: ImagePolicyList
+    plural: imagepolicies
+    singular: imagepolicy
+    shortNames:
+      - ipol
+  scope: Cluster
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [action]
+              properties:
+                displayName:
+                  type: string
+                  description: Human-readable policy name
+                description:
+                  type: string
+                enabled:
+                  type: boolean
+                  default: true
+                action:
+                  type: string
+                  enum: [deny, warn, audit]
+                match:
+                  type: object
+                  properties:
+                    severity:
+                      type: string
+                    environment:
+                      type: string
+                    scanned:
+                      type: boolean
+                    namespaceAllowlist:
+                      type: array
+                      items:
+                        type: string
+                    registryAllowlist:
+                      type: array
+                      items:
+                        type: string
+                    unsafePodSecurity:
+                      type: boolean
+                      description: Match Pods with privileged, root, or privilege-escalation risks
+                    privileged:
+                      type: boolean
+                      description: Match Pods with privileged containers
+                    runAsRoot:
+                      type: boolean
+                      description: Match Pods running as UID 0
+                    allowPrivilegeEscalation:
+                      type: boolean
+                      description: Match Pods with allowPrivilegeEscalation true
+                exceptions:
+                  type: array
+                  items:
+                    type: string
+                denyMessage:
+                  type: string
+                  description: Developer-facing message when this policy denies admission (supports {image}, {policy}, {severity}, {environment}, {namespace}, {registry}, {reason})
+                warnMessage:
+                  type: string
+                  description: Message shown as admission warning when action is warn
+            status:
+              type: object
+              properties:
+                observedGeneration:
+                  type: integer
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Action
+          type: string
+          jsonPath: .spec.action
+        - name: Enabled
+          type: boolean
+          jsonPath: .spec.enabled
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
