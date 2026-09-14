@@ -1,0 +1,168 @@
+# Local / k3d demo overlay for Katana + dummy-jfrog.
+# Applied by deploy/scripts/demo-k3d.sh (do not use as-is in production).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: katana-system
+  labels:
+    app.kubernetes.io/name: katana
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: katana
+  namespace: katana-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: katana-secrets
+  namespace: katana-system
+type: Opaque
+stringData:
+  KATANA_TOKEN: "change-me-dev-token"
+  KATANA_BOOTSTRAP_ADMIN_USER: "admin"
+  KATANA_BOOTSTRAP_ADMIN_PASSWORD: "admin"
+  JFROG_URL: "http://dummy-jfrog.katana-system.svc:8081"
+  JFROG_TOKEN: "demo-token"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: katana
+  namespace: katana-system
+  labels:
+    app: katana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: katana
+  template:
+    metadata:
+      labels:
+        app: katana
+    spec:
+      serviceAccountName: katana
+      containers:
+        - name: katana
+          image: katana:local
+          imagePullPolicy: Never
+          ports:
+            - name: https
+              containerPort: 8443
+          env:
+            - name: KATANA_ADDR
+              value: "0.0.0.0:8443"
+            - name: KATANA_DB_PATH
+              value: /data/katana.db
+            - name: KATANA_ADMISSION_DRY_RUN
+              value: "true"
+            - name: KATANA_CLUSTER_NAME
+              value: "demo-cluster"
+            - name: KATANA_AUTH_MODE
+              value: "local"
+            - name: KATANA_TLS_CERT
+              value: /tls/tls.crt
+            - name: KATANA_TLS_KEY
+              value: /tls/tls.key
+            - name: KATANA_BOOTSTRAP_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: katana-secrets
+                  key: KATANA_BOOTSTRAP_ADMIN_USER
+            - name: KATANA_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: katana-secrets
+                  key: KATANA_BOOTSTRAP_ADMIN_PASSWORD
+            - name: KATANA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: katana-secrets
+                  key: KATANA_TOKEN
+            - name: JFROG_URL
+              valueFrom:
+                secretKeyRef:
+                  name: katana-secrets
+                  key: JFROG_URL
+            - name: JFROG_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: katana-secrets
+                  key: JFROG_TOKEN
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: tls
+          secret:
+            secretName: katana-webhook-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: katana
+  namespace: katana-system
+spec:
+  selector:
+    app: katana
+  ports:
+    - name: https
+      port: 443
+      targetPort: https
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: katana-image-policy
+webhooks:
+  - name: images.katana.dev
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: Ignore
+    timeoutSeconds: 12
+    clientConfig:
+      service:
+        name: katana
+        namespace: katana-system
+        path: /validate
+        port: 443
+      caBundle: ""
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods", "pods/ephemeralcontainers"]
+        scope: Namespaced
+    namespaceSelector:
+      matchExpressions:
+        - key: katana.dev/enforce
+          operator: In
+          values: ["true"]

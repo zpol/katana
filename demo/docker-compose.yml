@@ -1,0 +1,10 @@
+services:
+  dummy-jfrog:
+    build: ./dummy-jfrog
+    ports:
+      - "8081:8081"
+    environment:
+      DUMMY_JFROG_ADDR: ":8081"
+      DUMMY_JFROG_CATALOG: /catalog/catalog.yaml
+    volumes:
+      - ./dummy-jfrog/catalog.yaml:/catalog/catalog.yaml:ro

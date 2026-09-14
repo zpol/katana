@@ -1,0 +1,155 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: katana-system
+  labels:
+    app.kubernetes.io/name: katana
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: katana
+  namespace: katana-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: katana-secrets
+  namespace: katana-system
+type: Opaque
+stringData:
+  KATANA_TOKEN: "change-me"
+  # Set real values via sealed-secrets / external-secrets in real envs
+  JFROG_URL: ""
+  JFROG_TOKEN: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: katana
+  namespace: katana-system
+  labels:
+    app: katana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: katana
+  template:
+    metadata:
+      labels:
+        app: katana
+    spec:
+      serviceAccountName: katana
+      containers:
+        - name: katana
+          image: katana:phase2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: https
+              containerPort: 8443
+          env:
+            - name: KATANA_ADDR
+              value: "0.0.0.0:8443"
+            - name: KATANA_DB_PATH
+              value: /data/katana.db
+            - name: KATANA_ADMISSION_DRY_RUN
+              value: "true"
+            - name: KATANA_TLS_CERT
+              value: /tls/tls.crt
+            - name: KATANA_TLS_KEY
+              value: /tls/tls.key
+            - name: KATANA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: katana-secrets
+                  key: KATANA_TOKEN
+            - name: JFROG_URL
+              valueFrom:
+                secretKeyRef:
+                  name: katana-secrets
+                  key: JFROG_URL
+            - name: JFROG_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: katana-secrets
+                  key: JFROG_TOKEN
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: tls
+          secret:
+            secretName: katana-webhook-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: katana
+  namespace: katana-system
+spec:
+  selector:
+    app: katana
+  ports:
+    - name: https
+      port: 443
+      targetPort: https
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: katana-image-policy
+webhooks:
+  - name: images.katana.dev
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: Ignore
+    # Handler budget is 8s (KATANA_ADMISSION_TIMEOUT); keep this above that.
+    timeoutSeconds: 12
+    clientConfig:
+      service:
+        name: katana
+        namespace: katana-system
+        path: /validate
+        port: 443
+      # caBundle must be set to the PEM-encoded CA that signed the webhook cert
+      caBundle: ""
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods", "pods/ephemeralcontainers"]
+        scope: Namespaced
+    # Cluster-wide by default. System namespaces are excluded via policy exceptions
+    # (kube-system, katana-system, cattle-*). To opt-in per namespace instead, add:
+    # namespaceSelector:
+    #   matchExpressions:
+    #     - key: katana.dev/enforce
+    #       operator: In
+    #       values: ["true"]

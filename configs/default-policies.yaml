@@ -1,0 +1,85 @@
+policies:
+  - name: Block Critical
+    description: Deny workloads with any Critical CVE (system NS excepted)
+    enabled: true
+    action: deny
+    deny_message: |
+      Image {image} has CRITICAL vulnerabilities (JFrog Xray). Policy: {policy}.
+      Upgrade the base image or contact your platform security team for an exception.
+    exceptions:
+      - kube-system
+      - katana-system
+      - katana-poc-system
+      - cattle-*
+    match:
+      severity: critical
+  - name: Block High in Prod
+    description: Deny High severity findings in production environments
+    enabled: true
+    action: deny
+    deny_message: |
+      Image {image} has HIGH severity findings in production (env: {environment}). Policy: {policy}.
+      Use a patched image version or deploy to a non-prod namespace for testing.
+    exceptions:
+      - kube-system
+      - katana-system
+      - katana-poc-system
+      - cattle-*
+    match:
+      severity: high
+      environment: prod
+  - name: Require Scanned Image
+    description: Deny images with no Xray scan result
+    enabled: true
+    action: deny
+    deny_message: |
+      Image {image} is not indexed in JFrog Xray (scanned=false). Policy: {policy}.
+      Ensure the image is scanned in Artifactory/Xray before deploying.
+    exceptions:
+      - kube-system
+      - katana-system
+      - katana-poc-system
+      - cattle-*
+    match:
+      scanned: false
+  - name: Allowlist System NS
+    description: Audit-only log of Pods in platform namespaces (kube-system, katana-system, katana-poc-system, cattle-*). Does not allow or block; deny exceptions do that. Safe to disable if you only need enforcement.
+    enabled: true
+    action: audit
+    warn_message: "System namespace activity recorded. Policy: {policy}."
+    match:
+      namespace_allowlist:
+        - kube-system
+        - katana-system
+        - katana-poc-system
+        - cattle-*
+  - name: Registry Allowlist
+    description: Deny images not from approved registries
+    enabled: true
+    action: deny
+    deny_message: |
+      Image {image} uses registry "{registry}" which is not on the approved list. Policy: {policy}.
+      Pull from artifactory.example.com or an approved registry.
+    exceptions:
+      - kube-system
+      - katana-system
+      - katana-poc-system
+      - cattle-*
+    match:
+      registry_allowlist:
+        - artifactory.example.com
+        - 123456789012.dkr.ecr.eu-west-3.amazonaws.com
+  - name: Deny Unsafe Pod Security
+    description: Deny privileged containers, root (UID 0), or allowPrivilegeEscalation
+    enabled: true
+    action: deny
+    deny_message: |
+      Pod security violation in namespace {namespace}. Policy: {policy}. {reason}
+      Do not run as root (UID 0), privileged, or with allowPrivilegeEscalation.
+    exceptions:
+      - kube-system
+      - katana-system
+      - katana-poc-system
+      - cattle-*
+    match:
+      unsafe_pod_security: true

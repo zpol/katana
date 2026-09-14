@@ -1,0 +1,45 @@
+# Binaries
+/bin/
+/katana
+*.exe
+*.test
+*.out
+
+# Env / secrets
+.env
+*.local
+tmp/
+
+# Go
+vendor/
+
+# Node / Vite
+web/node_modules/
+web/dist/
+web/.env
+web/.env.*
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# SQLite
+*.db
+*.db-journal
+data/
+# TLS certs (local gen)
+deploy/certs/
+deploy/k8s/katana-poc-webhook.generated.yaml
+
+# Fleet UI
+web-fleet/node_modules/
+web-fleet/dist/
+
+# Unreferenced UI captures (do not ship)
+web/public/screenshot*.png
+
+# Org-private PoC assets (not for public OSS tree)
+se-internal/
