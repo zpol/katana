@@ -103,7 +103,49 @@ tbody tr { cursor: pointer; }
 .timeline li { display: grid; grid-template-columns: 180px 1fr 1fr; gap: 12px; font-size: 12px; padding: 8px 0; border-bottom: 1px solid #1c2430; }
 footer { color: var(--muted); font-size: 11px; }
 
+/* —— Cluster honeycomb (flat-top, edge-fitted) —— */
+.hive-panel { overflow: auto; }
+.hive-legend {
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  margin: -4px 0 14px; font-size: 11px; color: var(--muted);
+}
+.hive-legend .hl { display: inline-flex; align-items: center; gap: 6px; }
+.hive-legend .hl i {
+  width: 12px; height: 14px; display: inline-block;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.hive-legend .hl.green i { background: var(--ok); }
+.hive-legend .hl.amber i { background: var(--warn); }
+.hive-legend .hl.red i { background: var(--bad); }
+
+.hive { margin: 4px 0 12px; }
+.hive-empty { margin: 12px 0; }
+.hive-svg { display: block; max-width: 100%; height: auto; }
+
+.hex-g { cursor: pointer; }
+.hex-g:hover polygon,
+.hex-g.on polygon {
+  filter: brightness(1.14);
+  stroke: rgba(255, 255, 255, 0.45);
+  stroke-width: 2;
+}
+
+.hex-name {
+  fill: #f4f7fb;
+  font-size: 8.5px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+.hex-meta {
+  fill: rgba(255, 255, 255, 0.85);
+  font-size: 9px;
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+
 @media (max-width: 1100px) {
   .kpis, .pies, .bars, .split { grid-template-columns: 1fr; }
   .timeline li { grid-template-columns: 1fr; }
 }
+

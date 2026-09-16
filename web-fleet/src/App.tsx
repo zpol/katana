@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getHistory, getOverview, type Cluster, type HistoryEvent, type Overview } from './api'
 import { ComplianceBar, Donut, HBar } from './charts'
+import { ClusterHive } from './ClusterHive'
 
 type WindowSel = '1h' | '24h' | '7d'
 
@@ -32,7 +33,8 @@ export default function App() {
     return () => clearInterval(id)
   }, [load])
 
-  const cluster = ov?.clusters.find((c) => c.name === selected) ?? null
+  const hiveClusters = ov?.clusters ?? []
+  const cluster = hiveClusters.find((c) => c.name === selected) ?? null
 
   return (
     <div className="shell">
@@ -72,6 +74,20 @@ export default function App() {
         <KPI label="Deny rate" value={`${(ov?.deny_rate ?? 0).toFixed(0)}%`} hint="enforce blocks" tone="warn" />
         <KPI label="Katana down" value={String(ov?.katana_down ?? 0)} hint="clusters without scrape" tone={ov?.katana_down ? 'bad' : 'ok'} />
         <KPI label="Nodes NotReady" value={String(ov?.nodes_not_ready ?? 0)} hint="fleet sum" tone={ov?.nodes_not_ready ? 'warn' : 'ok'} />
+      </section>
+
+      <section className="panel hive-panel">
+        <div className="panel-h">
+          <h2>Cluster map</h2>
+          <span className="muted">{hiveClusters.length} clusters · tick {tick}</span>
+        </div>
+        <div className="hive-legend">
+          <span className="hl green"><i /> healthy</span>
+          <span className="hl amber"><i /> degraded</span>
+          <span className="hl red"><i /> down / critical</span>
+          <span className="muted">Click a hex to open detail</span>
+        </div>
+        <ClusterHive clusters={hiveClusters} selected={selected} onSelect={setSelected} />
       </section>
 
       <section className="pies">
