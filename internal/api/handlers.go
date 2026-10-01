@@ -20,6 +20,7 @@ import (
 	"github.com/zpol/katana/internal/metrics"
 	"github.com/zpol/katana/internal/policy"
 	"github.com/zpol/katana/internal/policystore"
+	"github.com/zpol/katana/internal/scan"
 	"github.com/zpol/katana/internal/store"
 )
 
@@ -30,6 +31,7 @@ type Server struct {
 	PolicySource    string
 	Eval            *evaluate.Service
 	JFrog           jfrog.Client
+	ECR             scan.Client
 	Admit           *admission.Handler
 	Auth            *auth.Service
 	AdmissionDryRun bool
@@ -94,7 +96,7 @@ func (s *Server) Evaluate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			writeJSON(w, http.StatusGatewayTimeout, map[string]string{
-				"error": "evaluate timed out waiting for JFrog Xray (try a known indexed image or retry)",
+				"error": "evaluate timed out waiting for scanner (try a known indexed image or retry)",
 			})
 			return
 		}
@@ -277,17 +279,20 @@ func (s *Server) Routes(r chi.Router) {
 		r.Get("/api/v1/users", s.ListUsers)
 		r.Put("/api/v1/settings/sso", s.PutSSOSettings)
 		r.Post("/api/v1/settings/sso/test", s.TestSSOSettings)
+		r.Put("/api/v1/settings/integrations", s.PutIntegrationsSettings)
 	})
 
 	r.Post("/api/v1/auth/logout", s.AuthLogout)
 	r.Get("/api/v1/auth/me", s.AuthMe)
 	r.Get("/api/v1/integrations/jfrog", s.JFrogStatus)
+	r.Get("/api/v1/integrations/ecr", s.ECRStatus)
 	r.Post("/api/v1/evaluate", s.Evaluate)
 	r.Get("/api/v1/policies", s.ListPolicies)
 	r.Get("/api/v1/policies/{id}", s.GetPolicy)
 	r.Get("/api/v1/detections", s.ListDetections)
 	r.Get("/api/v1/stats/summary", s.StatsSummary)
 	r.Get("/api/v1/settings/sso", s.GetSSOSettings)
+	r.Get("/api/v1/settings/integrations", s.GetIntegrationsSettings)
 	if s.Admit != nil {
 		r.Post("/validate", s.Admit.ServeHTTP)
 		r.Post("/api/v1/admission/validate", s.Admit.ServeHTTP)

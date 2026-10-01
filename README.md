@@ -91,7 +91,7 @@ Optional: in **Settings → General**, save a legacy `X-Katana-Token` for curl/s
 | Policies | SQLite (default) **or** `ImagePolicy` CRDs (`KATANA_POLICY_SOURCE=crd` on `main`) |
 | UI | React + Vite — per-cluster admin (Dashboard, Policies, Detections, Evaluate, Settings) |
 | Fleet | Separate `katana-fleet` pod + Prometheus — multi-cluster NOC ([docs/FLEET.md](docs/FLEET.md)) |
-| Scan source | JFrog Platform Xray (`JFROG_URL` / `JFROG_TOKEN`) |
+| Scan source | JFrog Xray and/or Amazon Inspector (ECR); toggle in Settings → Integrations |
 | Enforce | Native K8s `ValidatingAdmissionWebhook` → KATANA `POST /validate` (TLS) |
 | Metrics | `GET /metrics` (Prometheus); identity label `KATANA_CLUSTER_NAME` |
 
@@ -186,6 +186,8 @@ sequenceDiagram
 ### JFrog Xray data model
 
 KATANA talks to **JFrog Platform Xray** over HTTPS with a Bearer token (`JFROG_TOKEN`). Implementation: `internal/jfrog`.
+
+**Multi-scanner:** Settings → Integrations can enable **JFrog Xray** and/or **Amazon Inspector (ECR)**. Images on `*.dkr.ecr.*.amazonaws.com` use ECR `DescribeImageScanFindings` (`internal/ecr`); other registries use Xray. Allowed registries configured in that UI sync the **Registry Allowlist** policy. Credentials stay env/IRSA-only (never in the browser). KATANA **reads** completed scan findings — it does not start scans during admission.
 
 #### APIs used
 
@@ -345,6 +347,7 @@ The **Dashboard** tab aggregates admission metrics (`GET /api/v1/stats/summary`)
 | `JFROG_TIMEOUT` | no | `90s` | HTTP timeout for Xray calls |
 | `JFROG_LOOKUP_BATCH_TIMEOUT` | no | — | Cap for batched Xray lookups during admission |
 | `JFROG_PROXY` | no | env proxy | Override HTTP(S) proxy for Xray calls |
+| `AWS_REGION` / `AWS_DEFAULT_REGION` | for ECR | — | Region for ECR Inspector lookups (IRSA recommended) |
 
 Copy [`.env.example`](.env.example) to `.env` for local dev. In Kubernetes, set values in the `katana-secrets` Secret (prefer External Secrets in production).
 

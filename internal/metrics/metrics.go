@@ -60,16 +60,29 @@ var (
 	xrayLookups = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: namespace,
 		Name:      "xray_lookups_total",
-		Help:      "JFrog Xray artifact lookups by status.",
+		Help:      "JFrog Xray artifact lookups by status (legacy; prefer katana_scan_lookups_total).",
 	}, []string{"cluster", "status"})
 
 	xrayLookupDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace:   namespace,
 		Name:        "xray_lookup_duration_seconds",
-		Help:        "JFrog Xray lookup duration.",
+		Help:        "JFrog Xray lookup duration (legacy; prefer katana_scan_lookup_duration_seconds).",
 		Buckets:     []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32},
 		ConstLabels: prometheus.Labels{"cluster": cluster},
 	})
+
+	scanLookups = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: namespace,
+		Name:      "scan_lookups_total",
+		Help:      "Image vulnerability scanner lookups by scanner and status.",
+	}, []string{"cluster", "scanner", "status"})
+
+	scanLookupDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: namespace,
+		Name:      "scan_lookup_duration_seconds",
+		Help:      "Image vulnerability scanner lookup duration.",
+		Buckets:   []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32},
+	}, []string{"cluster", "scanner"})
 
 	collectorErrors = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace:   namespace,
@@ -89,6 +102,8 @@ func MustRegister(r prometheus.Registerer) {
 		admissionDuration,
 		xrayLookups,
 		xrayLookupDuration,
+		scanLookups,
+		scanLookupDuration,
 		collectorErrors,
 	)
 }
@@ -133,16 +148,29 @@ func ObservePolicy(name, action string) {
 	admissionPolicy.WithLabelValues(cluster, name, action).Inc()
 }
 
-// ObserveXrayLookup records an Xray artifact summary call.
+// ObserveXrayLookup records an Xray artifact summary call (legacy wrapper).
 func ObserveXrayLookup(status string, d time.Duration) {
+	ObserveScanLookup("jfrog", status, d)
+}
+
+// ObserveScanLookup records a scanner artifact summary call.
+func ObserveScanLookup(scanner, status string, d time.Duration) {
+	scanner = strings.ToLower(strings.TrimSpace(scanner))
+	if scanner == "" {
+		scanner = "unknown"
+	}
 	status = strings.ToLower(strings.TrimSpace(status))
 	switch status {
 	case "indexed", "not_indexed", "unavailable":
 	default:
 		status = "unavailable"
 	}
-	xrayLookups.WithLabelValues(cluster, status).Inc()
-	xrayLookupDuration.Observe(d.Seconds())
+	scanLookups.WithLabelValues(cluster, scanner, status).Inc()
+	scanLookupDuration.WithLabelValues(cluster, scanner).Observe(d.Seconds())
+	if scanner == "jfrog" {
+		xrayLookups.WithLabelValues(cluster, status).Inc()
+		xrayLookupDuration.Observe(d.Seconds())
+	}
 }
 
 func incCollectorError() {

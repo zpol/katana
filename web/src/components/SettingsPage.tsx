@@ -1,18 +1,40 @@
 import { useEffect, useState } from 'react'
-import { api, getToken, setToken, type AuthUser, type KatanaUser, type SSOSettings } from '../api'
+import {
+  api,
+  getToken,
+  setToken,
+  type AuthUser,
+  type IntegrationStatus,
+  type IntegrationsSettings,
+  type KatanaUser,
+  type SSOSettings,
+} from '../api'
 
 interface Props {
   isAdmin: boolean
   user: AuthUser
 }
 
-type SettingsTab = 'general' | 'users' | 'sso'
+type SettingsTab = 'general' | 'integrations' | 'users' | 'sso'
+
+const emptyIntegrations = (): IntegrationsSettings => ({
+  allowed_registries: [],
+  scanners: {
+    jfrog: { enabled: false },
+    ecr_inspector: { enabled: false },
+  },
+})
 
 export function SettingsPage({ isAdmin, user }: Props) {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('general')
   const [localToken, setLocalToken] = useState(getToken())
-  const [jf, setJf] = useState<Awaited<ReturnType<typeof api.jfrogStatus>> | null>(null)
+  const [jf, setJf] = useState<IntegrationStatus | null>(null)
+  const [ecr, setEcr] = useState<IntegrationStatus | null>(null)
   const [jfErr, setJfErr] = useState('')
+  const [ecrErr, setEcrErr] = useState('')
+  const [integ, setInteg] = useState<IntegrationsSettings | null>(null)
+  const [integMsg, setIntegMsg] = useState('')
+  const [registryText, setRegistryText] = useState('')
   const [users, setUsers] = useState<KatanaUser[]>([])
   const [usersErr, setUsersErr] = useState('')
   const [sso, setSso] = useState<SSOSettings | null>(null)
@@ -26,6 +48,28 @@ export function SettingsPage({ isAdmin, user }: Props) {
     } catch (e) {
       setJf(null)
       setJfErr(e instanceof Error ? e.message : 'status failed')
+    }
+  }
+
+  const refreshEcr = async () => {
+    setEcrErr('')
+    try {
+      setEcr(await api.ecrStatus())
+    } catch (e) {
+      setEcr(null)
+      setEcrErr(e instanceof Error ? e.message : 'status failed')
+    }
+  }
+
+  const refreshIntegrations = async () => {
+    setIntegMsg('')
+    try {
+      const cfg = await api.getIntegrationsSettings()
+      setInteg(cfg)
+      setRegistryText((cfg.allowed_registries ?? []).join('\n'))
+    } catch (e) {
+      setInteg(emptyIntegrations())
+      setIntegMsg(e instanceof Error ? e.message : 'failed to load integrations')
     }
   }
 
@@ -54,12 +98,36 @@ export function SettingsPage({ isAdmin, user }: Props) {
 
   useEffect(() => {
     void refreshJf()
+    void refreshEcr()
+    void refreshIntegrations()
     void refreshSSO()
   }, [])
 
   useEffect(() => {
     if (settingsTab === 'users') void refreshUsers()
   }, [settingsTab, isAdmin])
+
+  const saveIntegrations = async () => {
+    if (!integ) return
+    setIntegMsg('')
+    const body: IntegrationsSettings = {
+      ...integ,
+      allowed_registries: registryText
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+    }
+    try {
+      const saved = await api.saveIntegrationsSettings(body)
+      setInteg(saved)
+      setRegistryText((saved.allowed_registries ?? []).join('\n'))
+      setIntegMsg('Saved. Registry Allowlist policy synced.')
+      void refreshJf()
+      void refreshEcr()
+    } catch (e) {
+      setIntegMsg(e instanceof Error ? e.message : 'save failed')
+    }
+  }
 
   const saveSSO = async () => {
     if (!sso) return
@@ -99,6 +167,12 @@ export function SettingsPage({ isAdmin, user }: Props) {
         <button className={settingsTab === 'general' ? 'active' : ''} onClick={() => setSettingsTab('general')}>
           General
         </button>
+        <button
+          className={settingsTab === 'integrations' ? 'active' : ''}
+          onClick={() => setSettingsTab('integrations')}
+        >
+          Integrations
+        </button>
         {isAdmin && (
           <button className={settingsTab === 'users' ? 'active' : ''} onClick={() => setSettingsTab('users')}>
             Users
@@ -120,9 +194,7 @@ export function SettingsPage({ isAdmin, user }: Props) {
 
           <div className="settings-card">
             <h3>Legacy API token (optional)</h3>
-            <p>
-              For scripts and automation only. Browser sessions use cookies after sign-in.
-            </p>
+            <p>For scripts and automation only. Browser sessions use cookies after sign-in.</p>
             <div className="field">
               <label>X-Katana-Token</label>
               <input
@@ -138,10 +210,80 @@ export function SettingsPage({ isAdmin, user }: Props) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {settingsTab === 'integrations' && (
+        <div className="settings-grid">
+          <div className="settings-card">
+            <h3>Scanners</h3>
+            <p>
+              Enable backends used at admission. Credentials stay server-side (`JFROG_*`, AWS IRSA /{' '}
+              <code>AWS_REGION</code>).
+            </p>
+            {!isAdmin && <p className="status-line">Read-only — ask an admin to change scanner settings.</p>}
+            {integ && (
+              <>
+                <div className="field">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={integ.scanners.jfrog.enabled}
+                      disabled={!isAdmin}
+                      onChange={(e) =>
+                        setInteg({
+                          ...integ,
+                          scanners: { ...integ.scanners, jfrog: { enabled: e.target.checked } },
+                        })
+                      }
+                    />{' '}
+                    JFrog Xray
+                  </label>
+                </div>
+                <div className="field">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={integ.scanners.ecr_inspector.enabled}
+                      disabled={!isAdmin}
+                      onChange={(e) =>
+                        setInteg({
+                          ...integ,
+                          scanners: { ...integ.scanners, ecr_inspector: { enabled: e.target.checked } },
+                        })
+                      }
+                    />{' '}
+                    Amazon Inspector (ECR enhanced scanning)
+                  </label>
+                </div>
+              </>
+            )}
+            {integMsg && <div className="status-line">{integMsg}</div>}
+            {isAdmin && (
+              <button className="btn primary" onClick={() => void saveIntegrations()}>
+                Save integrations
+              </button>
+            )}
+          </div>
 
           <div className="settings-card">
-            <h3>JFrog Artifactory / Xray</h3>
-            <p>Server-side only via `JFROG_URL` / `JFROG_TOKEN`.</p>
+            <h3>Allowed registries</h3>
+            <p>One host per line. Syncs the Registry Allowlist deny policy. Empty list disables that policy.</p>
+            <div className="field">
+              <label>Registries</label>
+              <textarea
+                rows={8}
+                disabled={!isAdmin}
+                value={registryText}
+                onChange={(e) => setRegistryText(e.target.value)}
+                placeholder={'123456789012.dkr.ecr.eu-west-1.amazonaws.com\nartifactory.example.com'}
+              />
+            </div>
+          </div>
+
+          <div className="settings-card">
+            <h3>JFrog status</h3>
+            <p>Env: `JFROG_URL` / `JFROG_TOKEN`.</p>
             {jfErr && <div className="status-line">Error: {jfErr}</div>}
             {jf && (
               <>
@@ -154,11 +296,29 @@ export function SettingsPage({ isAdmin, user }: Props) {
                 </p>
               </>
             )}
-            <div style={{ marginTop: '0.8rem' }}>
-              <button className="btn" onClick={() => void refreshJf()}>
-                Refresh status
-              </button>
-            </div>
+            <button className="btn" onClick={() => void refreshJf()}>
+              Refresh
+            </button>
+          </div>
+
+          <div className="settings-card">
+            <h3>ECR / Inspector status</h3>
+            <p>Uses the AWS default credential chain (IRSA recommended).</p>
+            {ecrErr && <div className="status-line">Error: {ecrErr}</div>}
+            {ecr && (
+              <>
+                <p>
+                  configured=<strong>{String(ecr.configured)}</strong> · reachable=
+                  <strong>{String(ecr.reachable)}</strong>
+                </p>
+                <p style={{ color: 'var(--muted)' }}>
+                  {ecr.base_url || '(no region)'} — {ecr.message}
+                </p>
+              </>
+            )}
+            <button className="btn" onClick={() => void refreshEcr()}>
+              Refresh
+            </button>
           </div>
         </div>
       )}
@@ -189,9 +349,10 @@ export function SettingsPage({ isAdmin, user }: Props) {
                           <button
                             className="btn ghost"
                             onClick={() =>
-                              void api.deleteUser(u.id).then(refreshUsers).catch((e) =>
-                                setUsersErr(e instanceof Error ? e.message : 'delete failed'),
-                              )
+                              void api
+                                .deleteUser(u.id)
+                                .then(refreshUsers)
+                                .catch((e) => setUsersErr(e instanceof Error ? e.message : 'delete failed'))
                             }
                           >
                             Delete
@@ -289,7 +450,10 @@ export function SettingsPage({ isAdmin, user }: Props) {
                 onChange={(e) =>
                   setSso({
                     ...sso,
-                    scopes: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                    scopes: e.target.value
+                      .split(',')
+                      .map((x) => x.trim())
+                      .filter(Boolean),
                   })
                 }
               />
@@ -303,42 +467,56 @@ export function SettingsPage({ isAdmin, user }: Props) {
               />
             </div>
             <div className="field">
-              <label>Admin groups (comma-separated)</label>
+              <label>Email claim</label>
+              <input
+                value={sso.email_claim}
+                disabled={!isAdmin}
+                onChange={(e) => setSso({ ...sso, email_claim: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label>Admin groups</label>
               <input
                 value={listField(sso.admin_groups)}
                 disabled={!isAdmin}
                 onChange={(e) =>
                   setSso({
                     ...sso,
-                    admin_groups: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                    admin_groups: e.target.value
+                      .split(',')
+                      .map((x) => x.trim())
+                      .filter(Boolean),
                   })
                 }
               />
             </div>
             <div className="field">
-              <label>Read-only groups (comma-separated)</label>
+              <label>Readonly groups</label>
               <input
                 value={listField(sso.readonly_groups)}
                 disabled={!isAdmin}
                 onChange={(e) =>
                   setSso({
                     ...sso,
-                    readonly_groups: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                    readonly_groups: e.target.value
+                      .split(',')
+                      .map((x) => x.trim())
+                      .filter(Boolean),
                   })
                 }
               />
             </div>
             <p style={{ color: 'var(--muted)' }}>
-              client_secret configured: <strong>{String(sso.client_secret_configured)}</strong>
+              Client secret configured: <strong>{String(sso.client_secret_configured)}</strong>
             </p>
             {ssoMsg && <div className="status-line">{ssoMsg}</div>}
             {isAdmin && (
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
+              <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem' }}>
                 <button className="btn primary" onClick={() => void saveSSO()}>
-                  Save SSO settings
+                  Save SSO
                 </button>
                 <button className="btn" onClick={() => void testSSO()}>
-                  Test connection
+                  Test
                 </button>
               </div>
             )}
@@ -352,11 +530,6 @@ export function SettingsPage({ isAdmin, user }: Props) {
 function normalizeSSO(raw: SSOSettings): SSOSettings {
   return {
     ...raw,
-    issuer: raw.issuer ?? '',
-    client_id: raw.client_id ?? '',
-    redirect_uri: raw.redirect_uri ?? '',
-    group_claim: raw.group_claim ?? 'groups',
-    email_claim: raw.email_claim ?? 'email',
     scopes: raw.scopes ?? [],
     admin_groups: raw.admin_groups ?? [],
     readonly_groups: raw.readonly_groups ?? [],

@@ -9,6 +9,9 @@
 .env
 *.local
 tmp/
+good.txt
+**/terraform.tfstate*
+**/.terraform/
 
 # Go
 vendor/

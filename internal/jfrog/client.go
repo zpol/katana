@@ -15,45 +15,28 @@ import (
 	"time"
 
 	"github.com/zpol/katana/internal/metrics"
+	"github.com/zpol/katana/internal/scan"
 )
 
 // ArtifactRef identifies an artifact in Artifactory / Xray.
-type ArtifactRef struct {
-	Repo     string `json:"repo,omitempty"`
-	Path     string `json:"path,omitempty"`
-	Sha      string `json:"sha,omitempty"`
-	ImageRef string `json:"image_ref,omitempty"`
-}
+type ArtifactRef = scan.ArtifactRef
 
 // ScanSummary is a normalized Xray scan result.
-type ScanSummary struct {
-	Artifact     ArtifactRef `json:"artifact"`
-	Scanned      bool        `json:"scanned"`
-	LookupStatus string      `json:"lookup_status,omitempty"` // indexed | not_indexed | unavailable
-	Critical     int         `json:"critical"`
-	High         int         `json:"high"`
-	Medium       int         `json:"medium"`
-	Low          int         `json:"low"`
-	Unknown      int         `json:"unknown"`
-	Violations   []string    `json:"violations,omitempty"`
-	RawError     string      `json:"error,omitempty"`
-}
+type ScanSummary = scan.Summary
 
 // Status describes integration readiness (no secrets).
-type Status struct {
-	Configured bool   `json:"configured"`
-	BaseURL    string `json:"base_url,omitempty"`
-	Reachable  bool   `json:"reachable"`
-	Message    string `json:"message"`
-}
+type Status = scan.Status
 
 // Client is the JFrog Xray / Artifactory integration surface.
 type Client interface {
+	Name() string
 	Configured() bool
 	Status(ctx context.Context) Status
 	Ping(ctx context.Context) error
 	GetScanSummary(ctx context.Context, ref ArtifactRef) (*ScanSummary, error)
 }
+
+const scannerName = "jfrog"
 
 // HTTPClient talks to JFrog Platform Xray APIs.
 type scanCacheEntry struct {
@@ -79,6 +62,9 @@ func NewHTTPClient(baseURL, token string) *HTTPClient {
 		cache:      map[string]scanCacheEntry{},
 	}
 }
+
+// Name implements scan.Client.
+func (c *HTTPClient) Name() string { return scannerName }
 
 func scanCacheKey(ref ArtifactRef) string {
 	return strings.TrimSpace(ref.ImageRef) + "|" + strings.TrimSpace(ref.Sha)
@@ -175,9 +161,9 @@ func (c *HTTPClient) Configured() bool {
 // Status returns a safe integration status (token never included).
 func (c *HTTPClient) Status(ctx context.Context) Status {
 	if !c.Configured() {
-		return Status{Configured: false, Message: "JFROG_URL / JFROG_TOKEN not set"}
+		return Status{Configured: false, Scanner: scannerName, Message: "JFROG_URL / JFROG_TOKEN not set"}
 	}
-	st := Status{Configured: true, BaseURL: c.baseURL}
+	st := Status{Configured: true, Scanner: scannerName, BaseURL: c.baseURL}
 	if err := c.Ping(ctx); err != nil {
 		st.Reachable = false
 		st.Message = err.Error()
@@ -241,17 +227,21 @@ type summaryResponse struct {
 func (c *HTTPClient) GetScanSummary(ctx context.Context, ref ArtifactRef) (sum *ScanSummary, err error) {
 	start := time.Now()
 	defer func() {
+		if sum != nil && sum.Scanner == "" {
+			sum.Scanner = scannerName
+		}
 		status := "unavailable"
 		if sum != nil && sum.LookupStatus != "" {
 			status = sum.LookupStatus
 		}
-		metrics.ObserveXrayLookup(status, time.Since(start))
+		metrics.ObserveScanLookup(scannerName, status, time.Since(start))
 	}()
 	if !c.Configured() {
 		return &ScanSummary{
 			Artifact:     ref,
 			Scanned:      false,
 			LookupStatus: "unavailable",
+			Scanner:      scannerName,
 			RawError:     "jfrog not configured",
 			Violations: []string{
 				"jfrog not configured: set JFROG_URL and JFROG_TOKEN",
