@@ -91,11 +91,11 @@ go run ./cmd/fleet
 ### Build images
 
 ```bash
-docker build --build-arg KATANA_VERSION=0.5.0 -t registry.example.com/<team>/katana:0.5.0 .
-docker build --target fleet --build-arg KATANA_VERSION=0.5.0 \
-  -t registry.example.com/<team>/katana-fleet:0.5.0 .
-docker push registry.example.com/<team>/katana:0.5.0
-docker push registry.example.com/<team>/katana-fleet:0.5.0
+docker build --build-arg KATANA_VERSION=1.6.0 -t registry.example.com/<team>/katana:1.6.0 .
+docker build --target fleet --build-arg KATANA_VERSION=1.6.0 \
+  -t registry.example.com/<team>/katana-fleet:1.6.0 .
+docker push registry.example.com/<team>/katana:1.6.0
+docker push registry.example.com/<team>/katana-fleet:1.6.0
 ```
 
 Deploy Katana with [`deploy/k8s/katana.yaml`](../deploy/k8s/katana.yaml), then run fleet against your Prometheus (or a sidecar scrape config of your choosing). Prefer a new image tag after rebuilding so registries do not serve a stale digest.

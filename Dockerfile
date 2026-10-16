@@ -24,7 +24,7 @@ RUN go mod download
 COPY . .
 COPY --from=web /src/web/dist ./web/dist
 COPY --from=web-fleet /src/web-fleet/dist ./web-fleet/dist
-ARG KATANA_VERSION=0.5.0
+ARG KATANA_VERSION=1.6.0
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags "-X github.com/zpol/katana/internal/version.Version=${KATANA_VERSION}" \
     -o /out/katana ./cmd/katana
@@ -49,7 +49,7 @@ FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /
 COPY --from=api /out/katana /katana
 COPY --from=api /src/web/dist /web/dist
-ARG KATANA_VERSION=0.5.0
+ARG KATANA_VERSION=1.6.0
 ENV KATANA_ADDR=0.0.0.0:8443 \
     KATANA_DB_PATH=/data/katana.db \
     KATANA_ADMISSION_DRY_RUN=true \

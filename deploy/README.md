@@ -20,7 +20,7 @@ KEY=$(base64 -w0 /tmp/katana-certs/tls.key)
 helm upgrade --install katana deploy/charts/katana \
   --namespace katana-system --create-namespace \
   --set image.repository=registry.example.com/<team>/katana \
-  --set image.tag=0.5.0 \
+  --set image.tag=1.6.0 \
   --set webhook.createSecret=true \
   --set-string webhook.tls.cert="$CERT" \
   --set-string webhook.tls.key="$KEY" \
