@@ -6,11 +6,11 @@
 
 **KATANA** (*Kubernetes Admission Trust Assessment & Native Authorization*) is a policy control plane for container images on Kubernetes.
 
-Before a Pod lands in the cluster, KATANA asks **JFrog Xray** for vulnerability posture, matches configurable policies (`deny` / `warn` / `audit`), records detections, and can enforce the decision through a native **ValidatingAdmissionWebhook**. A separate **fleet** console aggregates Prometheus metrics across clusters.
+Before a Pod lands in the cluster, KATANA asks a configured **scan backend** (**JFrog Xray** and/or **Amazon Inspector** via ECR) for vulnerability posture, matches configurable policies (`deny` / `warn` / `audit`), records detections, and can enforce the decision through a native **ValidatingAdmissionWebhook**. A separate **fleet** console aggregates Prometheus metrics across clusters.
 
 **Repository:** [github.com/zpol/katana](https://github.com/zpol/katana)
 
-**Documentation:** [docs/AUTH.md](docs/AUTH.md) (users, roles, dry-run banner) · [docs/SSO.md](docs/SSO.md) (OIDC) · [docs/policies.md](docs/policies.md) (ImagePolicy rules) · [docs/FLEET.md](docs/FLEET.md) (Prometheus + fleet dashboard)
+**Documentation:** [docs/AUTH.md](docs/AUTH.md) (users, roles, dry-run banner) · [docs/SSO.md](docs/SSO.md) (OIDC) · [docs/policies.md](docs/policies.md) (ImagePolicy rules) · [docs/SCANNERS.md](docs/SCANNERS.md) (JFrog + ECR Inspector) · [docs/FLEET.md](docs/FLEET.md) (Prometheus + fleet dashboard)
 
 ### Screenshots
 
@@ -49,7 +49,7 @@ export KATANA_TOKEN=change-me-dev-token
 export KATANA_ADDR=0.0.0.0:8080
 export KATANA_DB_PATH=./data/katana.db
 export KATANA_ADMISSION_DRY_RUN=true
-# Optional — live Xray lookups (real Artifactory):
+# Optional — JFrog Xray (Artifactory):
 # export JFROG_URL=https://artifactory.example.com
 # export JFROG_TOKEN='<identity-token>'
 # export JFROG_TIMEOUT=90s
@@ -59,11 +59,16 @@ export KATANA_ADMISSION_DRY_RUN=true
 #   cd demo/dummy-jfrog && go run .
 # export JFROG_URL=http://127.0.0.1:8081
 # export JFROG_TOKEN=demo-token
+#
+# Optional — Amazon ECR / Inspector (IRSA in cluster; keys only for local labs):
+# export AWS_REGION=eu-west-1
+# Then Settings → Integrations: enable ECR Inspector, list allowed registries.
+# Details: docs/SCANNERS.md
 
 make dev
 ```
 
-**Local demo with canned Xray:** [`demo/README.md`](demo/README.md) · k3d webhook: `bash deploy/scripts/demo-k3d.sh`
+**Local demo with canned Xray:** [`demo/README.md`](demo/README.md) · k3d webhook: `bash deploy/scripts/demo-k3d.sh` · AWS E2E: [`deploy/e2e-aws/README.md`](deploy/e2e-aws/README.md)
 
 **Terminal 2 — UI (hot reload, recommended while editing the UI)**
 
@@ -101,7 +106,7 @@ Optional: in **Settings → General**, save a legacy `X-Katana-Token` for curl/s
 
 ### Big picture
 
-KATANA uses **native Kubernetes admission** for interception; policy evaluation and Xray lookups run inside the KATANA app (not in the API server).
+KATANA uses **native Kubernetes admission** for interception; policy evaluation and scanner lookups run inside the KATANA app (not in the API server).
 
 ```mermaid
 flowchart TB
@@ -123,12 +128,13 @@ flowchart TB
     Events[(SQLite_detections)]
     Policies[(SQLite_or_CRD_cache)]
     Admit[Admission_Handler]
-    JClient[JFrog_Client]
+    Router[Scanner_router]
     Metrics[GET_metrics]
   end
 
   subgraph external [External]
     Xray[JFrog_Xray]
+    ECR[Amazon_ECR_Inspector]
     Workload[Pod_create_update]
     Prom[Prometheus]
   end
@@ -139,8 +145,9 @@ flowchart TB
   API --> Events
   API --> Policies
   API --> Eval
-  Eval --> JClient
-  JClient -->|HTTPS_Bearer| Xray
+  Eval --> Router
+  Router -->|non_ECR| Xray
+  Router -->|ECR_host| ECR
   Eval --> Events
   Workload --> APIServer
   APIServer -->|AdmissionReview_TLS| VWH
@@ -157,9 +164,9 @@ flowchart TB
 When an **image** is evaluated (manually or from a Pod admission):
 
 1. Parse image → registry / name / tag / digest (`internal/imageutil`).
-2. Ask Xray for an artifact summary (`internal/jfrog`):
-   - Tries Artifactory-style paths (repo layouts and common aliases)  
-     `default/<repo>/<path>/<tag>/list.manifest.json` and `manifest.json`.
+2. Route to a scan backend ([`docs/SCANNERS.md`](docs/SCANNERS.md)):
+   - **ECR host** + Inspector enabled → `DescribeImageScanFindings` (`internal/ecr`)
+   - **Otherwise** + JFrog enabled → Xray artifact summary (`internal/jfrog`), with Artifactory-style path candidates
 3. Derive highest severity (`critical` > `high` > `medium` > `low`).
 4. Load policies from **SQLite** (default) or **ImagePolicy CRDs** (`KATANA_POLICY_SOURCE=crd`) and run the evaluator (`deny` > `warn` > `audit` > default allow).
 5. Namespace **exceptions** (exact name or prefix wildcards like `platform-*`) skip matching policies.
@@ -170,13 +177,13 @@ When an **image** is evaluated (manually or from a Pod admission):
 sequenceDiagram
   participant Caller as UI_or_APIServer
   participant API as KATANA
-  participant XF as JFrog_Xray
+  participant Scan as Scanner_router
   participant Pol as Policies_SQLite_or_CRD
   participant DB as SQLite_events
 
   Caller->>API: evaluate image or AdmissionReview Pod
-  API->>XF: POST /xray/api/v1/summary/artifact
-  XF-->>API: issues severities
+  API->>Scan: GetScanSummary by registry
+  Scan-->>API: severities scanned status
   API->>Pol: list policies
   API->>API: Evaluator deny_warn_audit
   API->>DB: insert detection with outcome
@@ -187,7 +194,7 @@ sequenceDiagram
 
 KATANA talks to **JFrog Platform Xray** over HTTPS with a Bearer token (`JFROG_TOKEN`). Implementation: `internal/jfrog`.
 
-**Multi-scanner:** Settings → Integrations can enable **JFrog Xray** and/or **Amazon Inspector (ECR)**. Images on `*.dkr.ecr.*.amazonaws.com` use ECR `DescribeImageScanFindings` (`internal/ecr`); other registries use Xray. Allowed registries configured in that UI sync the **Registry Allowlist** policy. Credentials stay env/IRSA-only (never in the browser). KATANA **reads** completed scan findings — it does not start scans during admission.
+**Multi-scanner overview** (Settings → Integrations, ECR IRSA, ECR-only mode): **[`docs/SCANNERS.md`](docs/SCANNERS.md)**. Images on `*.dkr.ecr.*.amazonaws.com` use ECR Inspector when that backend is enabled; other registries use Xray. Allowed registries in the UI sync the **Registry Allowlist** policy. Credentials stay env/IRSA-only. KATANA **reads** completed scan findings — it does not start scans during admission.
 
 #### APIs used
 
@@ -522,9 +529,9 @@ flowchart LR
 | Topic | Recommendation |
 |-------|----------------|
 | Namespace | Dedicated `katana-system` (or your platform namespace) |
-| Network | Egress **TCP/443** to your Artifactory / Xray URL (and HTTP proxy if required) |
+| Network | Egress **TCP/443** to Xray and/or AWS ECR/Inspector APIs (and HTTP proxy if required) |
 | Exposure | **ClusterIP** for the webhook; expose the UI via internal Ingress only |
-| Secrets | External Secrets / Sealed Secrets for `JFROG_TOKEN`, `KATANA_TOKEN`; never bake into the image |
+| Secrets | External Secrets / Sealed Secrets for `JFROG_TOKEN`, `KATANA_TOKEN`; ECR prefers **IRSA** over static AWS keys |
 | HA | Start 2 replicas once DB is moved off local SQLite emptyDir (see roadmap) |
 | Enforce scope | **Cluster-wide** Pod CREATE/UPDATE by default; `kube-system`, `kube-public`, `kube-node-lease`, and `katana-system` excluded via policy exceptions. Optional Rancher exceptions: [`configs/examples/rancher-exceptions.yaml`](configs/examples/rancher-exceptions.yaml). Optional per-NS opt-in: uncomment `namespaceSelector` in `deploy/k8s/katana.yaml`. |
 
@@ -532,7 +539,7 @@ flowchart LR
 
 1. **RBAC** to create Namespace, Deployment, Service, Secrets, and `ValidatingWebhookConfiguration` (usually cluster-admin).
 2. Container image pushed to a registry the cluster can pull.
-3. Network allow-list for Xray / Artifactory HTTPS from the KATANA pods.
+3. Network allow-list for Xray / Artifactory and/or AWS APIs from the KATANA pods (see [`docs/SCANNERS.md`](docs/SCANNERS.md)).
 4. TLS certificate for `katana.katana-system.svc` (cert-manager, or `deploy/scripts/gen-webhook-certs.sh` for lab).
 
 ### Build & push image
@@ -578,17 +585,18 @@ flowchart LR
 ```
 
 1. **Stage 1** — Deploy Deployment + Service + UI; validate Settings / Evaluate.
-2. **Stage 2** — Confirm Xray paths for your registries.
+2. **Stage 2** — Confirm scanners (Xray paths and/or ECR IRSA + enhanced scanning). Settings → Integrations.
 3. **Stage 3** — Webhook active (`failurePolicy: Ignore`, `KATANA_ADMISSION_DRY_RUN=true`). Watch Detections.
-4. **Stage 4** — Set `KATANA_ADMISSION_DRY_RUN=false`; tighten `failurePolicy` to `Fail` when latency to Xray is proven.
+4. **Stage 4** — Set `KATANA_ADMISSION_DRY_RUN=false`; tighten `failurePolicy` to `Fail` when scanner latency is proven.
 
 ### Env vars in cluster
 
 | Variable | Role |
 |----------|------|
 | `KATANA_TOKEN` | Admin API / UI |
-| `JFROG_URL` | e.g. `https://artifactory.example.com` |
+| `JFROG_URL` | e.g. `https://artifactory.example.com` (optional if ECR-only) |
 | `JFROG_TOKEN` | Identity / access token (read on Xray) |
+| `AWS_REGION` / `AWS_DEFAULT_REGION` | Region for ECR Inspector (IRSA recommended) |
 | `KATANA_ADDR` | `0.0.0.0:8443` behind TLS |
 | `KATANA_TLS_CERT` / `KATANA_TLS_KEY` | Webhook serving certs |
 | `KATANA_ADMISSION_DRY_RUN` | `true` until ready |
@@ -607,7 +615,7 @@ Preferred production path:
 1. Publish the image via CI to your registry.
 2. Commit Helm/manifests to the cluster GitOps repo (Argo CD / Flux).
 3. Manage secrets with a platform secret store (External Secrets, Sealed Secrets, etc.), not plain Secret YAML.
-4. Allow egress to any new Artifactory / Xray FQDNs your cluster does not already reach.
+4. Allow egress to Artifactory / Xray and/or AWS ECR endpoints your cluster does not already reach.
 
 ---
 
@@ -617,14 +625,16 @@ Preferred production path:
 cmd/katana/              process entrypoint
 cmd/fleet/               fleet console (Prometheus + SQLite history)
 internal/api/            REST + middleware
+internal/jfrog/          JFrog Xray client
+internal/ecr/            Amazon ECR / Inspector client
+internal/scan/           scanner router + shared summary types
 internal/policy/         models + evaluator + tests
 internal/policystore/    SQLite or CRD-backed policy store
 internal/evaluate/       image evaluation orchestration
-internal/jfrog/          Xray HTTP client
 internal/admission/      ValidatingAdmissionWebhook handler
 internal/metrics/        Prometheus exporter (`GET /metrics`)
 internal/fleet/          fleet PromQL client + snapshot store
-internal/store/          SQLite detections + legacy policy CRUD
+internal/store/          SQLite detections + settings
 internal/detect/         detection model (+ deploy outcome fields)
 internal/imageutil/      image ref parsing
 web/                     React admin UI (Dashboard, Policies, Detections, …)
@@ -632,6 +642,7 @@ web-fleet/               React fleet / NOC UI
 configs/                 default policy YAML reference
 deploy/k8s/              Kubernetes manifests
 deploy/crd/              ImagePolicy CRD + default policies
+deploy/e2e-aws/          Disposable ECR + EKS Terraform for scanner E2E
 deploy/scripts/          CRD apply, webhook certs, JFrog helpers
 scripts/                 dev-api.sh, dev-ui.sh (local helpers)
 Dockerfile               Katana image (default) + `docker build --target fleet`
@@ -647,6 +658,7 @@ Dockerfile               Katana image (default) + `docker build --target fleet`
 - ~~ImagePolicy CRDs~~ (done on `main`)
 - ~~OIDC for UI~~ (done — see [`docs/SSO.md`](docs/SSO.md))
 - ~~Metrics (Prometheus) + fleet dashboard~~ (done — [`docs/FLEET.md`](docs/FLEET.md))
+- ~~Multi-scanner (JFrog + Amazon ECR Inspector)~~ (done — [`docs/SCANNERS.md`](docs/SCANNERS.md))
 - Persistent DB (Postgres) + multi-replica webhook  
 - cert-manager Certificate + automatic `caBundle` injection  
 - Richer Xray path resolution (checksum / package search)  

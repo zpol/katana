@@ -19,7 +19,7 @@ Each policy has:
 
 **Precedence:** if any enabled policy matches with `deny`, the Pod is blocked (unless `KATANA_ADMISSION_DRY_RUN=true`). Otherwise `warn`, then `audit`, then default allow.
 
-**Who actually blocks the Pod?** The Kubernetes API server, when KATANA's webhook returns `allowed: false`. Policies are only **definitions** — scan results come from JFrog Xray at evaluation time.
+**Who actually blocks the Pod?** The Kubernetes API server, when KATANA's webhook returns `allowed: false`. Policies are only **definitions** — scan results come from the configured backends (**JFrog Xray** and/or **Amazon Inspector** on ECR) at evaluation time. See [`SCANNERS.md`](./SCANNERS.md).
 
 ---
 
@@ -59,9 +59,9 @@ These ship in both `configs/default-policies.yaml` (SQLite) and `deploy/crd/defa
 
 | # | Name | Action | What it checks |
 |---|------|--------|----------------|
-| 1 | **Block Critical** | deny | Xray severity = `critical` |
-| 2 | **Block High in Prod** | deny | Xray severity = `high` **and** environment = `prod` |
-| 3 | **Require Scanned Image** | deny | Image has no Xray scan (`scanned=false`) |
+| 1 | **Block Critical** | deny | Highest scan severity = `critical` (Xray or ECR Inspector) |
+| 2 | **Block High in Prod** | deny | Severity = `high` **and** environment = `prod` |
+| 3 | **Require Scanned Image** | deny | No completed scan (`scanned=false` / lookup unavailable) |
 | 4 | **Allowlist System NS** | audit | Log Pods in platform namespaces — does **not** allow or block ([details](#allowlist-system-ns-policy-4)) |
 | 5 | **Registry Allowlist** | deny | Image registry not in the approved list |
 | 6 | **Deny Unsafe Pod Security** | deny | Pod runs as root, is privileged, or allows privilege escalation |
@@ -90,8 +90,8 @@ flowchart TD
   Xray --> Pol[Image policies 1–5]
 ```
 
-1. **Pod security** — inspects `securityContext` on the Pod and each container/init container. No Xray call.
-2. **Image policies** — for each container image, queries Xray and evaluates severity, scanned flag, registry, etc.
+1. **Pod security** — inspects `securityContext` on the Pod and each container/init container. No scanner call.
+2. **Image policies** — for each container image, queries the routed scanner (Xray or ECR Inspector) and evaluates severity, scanned flag, registry, etc.
 
 Pod security runs **before** image checks so an unsafe Pod is rejected even if the image is clean.
 
@@ -279,9 +279,9 @@ No. The name is leftover wording. It is `audit` only: log Pods in `kube-system`,
 
 **Block High in Prod** matches when environment is `prod`. Admission defaults every namespace to `prod` unless it is listed in `KATANA_NONPROD_NAMESPACES`. Pod labels like `env: dev` are ignored. For a demo namespace, set `KATANA_NONPROD_NAMESPACES=katana-demo` (or a prefix pattern).
 
-### Why does an image show unscanned / DENY when it exists in Artifactory?
+### Why does an image show unscanned / DENY when it exists in Artifactory / ECR?
 
-**Require Scanned Image** checks **Xray**, not Artifactory presence. If the image is in Artifactory but not indexed in Xray (`not_indexed`, or the token cannot read it), `scanned=false` and the Pod is denied.
+**Require Scanned Image** checks the **scan backend**, not registry presence alone. If the image is in Artifactory but not indexed in Xray, or in ECR without a **completed** Inspector/ECR scan (`not_indexed` / still in progress), `scanned=false` and the Pod is denied. See [`SCANNERS.md`](./SCANNERS.md).
 
 The Evaluate tab / Dashboard can show **0 Critical / 0 High** for that case: those counters default to zero when there is no scan. That is **not** a clean image — it is unscanned. Demo namespaces often except Require Scanned so evaluate/deploy can still allow; do not copy those exceptions to prod.
 

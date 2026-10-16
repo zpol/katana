@@ -4,13 +4,16 @@ KATANA runs as a **ValidatingAdmissionWebhook** inside the cluster. The API serv
 
 Auth, users, SSO: [`docs/AUTH.md`](../docs/AUTH.md) · [`docs/SSO.md`](../docs/SSO.md).  
 Policy reference: [`docs/policies.md`](../docs/policies.md).  
-Fleet / Prometheus: [`docs/FLEET.md`](../docs/FLEET.md).
+Scanners (JFrog + ECR Inspector): [`docs/SCANNERS.md`](../docs/SCANNERS.md).  
+Fleet / Prometheus: [`docs/FLEET.md`](../docs/FLEET.md).  
+Ephemeral AWS E2E: [`e2e-aws/README.md`](e2e-aws/README.md).
 
 ## Prerequisites
 
 - Cluster-admin (or equivalent) RBAC to create `ValidatingWebhookConfiguration`
 - Container image in a registry your cluster can pull
-- Egress **TCP/443** from the KATANA pods to your JFrog Xray / Artifactory URL
+- Egress **TCP/443** from the KATANA pods to JFrog Xray / Artifactory and/or AWS ECR APIs
+- For ECR: IRSA (or lab AWS keys) + `AWS_REGION`; registry enhanced scanning recommended
 - TLS certificate for Service DNS `katana.katana-system.svc`
 
 ## Step-by-step
@@ -32,8 +35,10 @@ Edit [`k8s/katana.yaml`](k8s/katana.yaml) or use External Secrets / Sealed Secre
 | `KATANA_TOKEN` | Legacy API token (admin; optional with local/SSO login) |
 | `KATANA_OIDC_CLIENT_ID` | OIDC client ID (optional) |
 | `KATANA_OIDC_CLIENT_SECRET` | OIDC client secret (optional; never in ConfigMap) |
-| `JFROG_URL` | e.g. `https://artifactory.example.com` |
+| `JFROG_URL` | e.g. `https://artifactory.example.com` (optional if ECR-only) |
 | `JFROG_TOKEN` | Xray read token |
+
+For **Amazon ECR / Inspector**, prefer annotating the ServiceAccount with IRSA and set `AWS_REGION` on the Deployment (see [`docs/SCANNERS.md`](../docs/SCANNERS.md)). After deploy, open **Settings → Integrations** to enable scanners and allowed registries.
 
 ### 3. TLS for the webhook
 
