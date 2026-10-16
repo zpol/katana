@@ -13,6 +13,7 @@ import (
 	"github.com/zpol/katana/internal/jfrog"
 	"github.com/zpol/katana/internal/policy"
 	"github.com/zpol/katana/internal/policystore"
+	"github.com/zpol/katana/internal/scan"
 	"github.com/zpol/katana/internal/store"
 )
 
@@ -62,7 +63,7 @@ func TestAdmitPodDenyIncludesFailureAndPolicyMessage(t *testing.T) {
 		Eval: &evaluate.Service{
 			Policies:  policystore.NewSQLite(st),
 			Events:    st,
-			JFrog:     jfrog.NewHTTPClient("", ""),
+			Scanner:   jfrog.NewHTTPClient("", ""),
 			Evaluator: policy.NewEvaluator(),
 		},
 		DryRun: false,
@@ -164,7 +165,7 @@ func TestEvaluateServiceDeniesUnscannedEvilRegistry(t *testing.T) {
 	svc := &evaluate.Service{
 		Policies:  policystore.NewSQLite(st),
 		Events:    st,
-		JFrog:     jfrog.NewHTTPClient("", ""),
+		Scanner:   jfrog.NewHTTPClient("", ""),
 		Evaluator: policy.NewEvaluator(),
 	}
 	res, err := svc.EvaluateImage(context.Background(), evaluate.Request{
@@ -183,15 +184,15 @@ func TestEvaluateServiceDeniesUnscannedEvilRegistry(t *testing.T) {
 func TestClassifyOutcome(t *testing.T) {
 	scanned := evaluate.Result{
 		Decision: policy.Decision{Allowed: true},
-		Scan:     &jfrog.ScanSummary{Scanned: true, LookupStatus: "indexed"},
+		Scan:     &scan.Summary{Scanned: true, LookupStatus: "indexed"},
 	}
 	blocked := evaluate.Result{
 		Decision: policy.Decision{Allowed: false, Action: policy.ActionDeny, MatchedPolicy: "Block Critical"},
-		Scan:     &jfrog.ScanSummary{Scanned: true, LookupStatus: "indexed"},
+		Scan:     &scan.Summary{Scanned: true, LookupStatus: "indexed"},
 	}
 	unscanned := evaluate.Result{
 		Decision: policy.Decision{Allowed: true},
-		Scan:     &jfrog.ScanSummary{Scanned: false, LookupStatus: "not_indexed"},
+		Scan:     &scan.Summary{Scanned: false, LookupStatus: "not_indexed"},
 	}
 	cases := []struct {
 		dry, allowed, failed bool

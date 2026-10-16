@@ -17,11 +17,13 @@ import (
 	"github.com/zpol/katana/internal/admission"
 	"github.com/zpol/katana/internal/api"
 	"github.com/zpol/katana/internal/auth"
+	"github.com/zpol/katana/internal/ecr"
 	"github.com/zpol/katana/internal/evaluate"
 	"github.com/zpol/katana/internal/jfrog"
 	"github.com/zpol/katana/internal/metrics"
 	"github.com/zpol/katana/internal/policy"
 	"github.com/zpol/katana/internal/policystore"
+	"github.com/zpol/katana/internal/scan"
 	"github.com/zpol/katana/internal/store"
 	"github.com/zpol/katana/internal/version"
 )
@@ -31,6 +33,7 @@ func main() {
 	dbPath := env("KATANA_DB_PATH", "./data/katana.db")
 	jfURL := env("JFROG_URL", "")
 	jfToken := env("JFROG_TOKEN", "")
+	awsRegion := env("AWS_REGION", env("AWS_DEFAULT_REGION", ""))
 	tlsCert := env("KATANA_TLS_CERT", "")
 	tlsKey := env("KATANA_TLS_KEY", "")
 	admissionDry := strings.EqualFold(env("KATANA_ADMISSION_DRY_RUN", "true"), "true")
@@ -69,10 +72,20 @@ func main() {
 	defer policyStore.Close()
 
 	jf := jfrog.NewHTTPClient(jfURL, jfToken)
+	ecrClient := ecr.NewClient(awsRegion)
+	router := &scan.Router{
+		Config: &scan.StoreConfig{
+			Store:           st,
+			JFrogConfigured: jf.Configured(),
+			ECRConfigured:   ecrClient.Configured(),
+		},
+		JFrog: jf,
+		ECR:   ecrClient,
+	}
 	eval := &evaluate.Service{
 		Policies:  policyStore,
 		Events:    st,
-		JFrog:     jf,
+		Scanner:   router,
 		Evaluator: policy.NewEvaluator(),
 	}
 	admit := admission.NewHandler(eval, admissionDry)
@@ -84,10 +97,10 @@ func main() {
 		DryRun:       admissionDry,
 		Ready:        func() bool { return policyStore.Ready(context.Background()) },
 		JFrogUp: func() bool {
-			if jf == nil || !jf.Configured() {
-				return false
-			}
-			return true
+			return jf != nil && jf.Configured()
+		},
+		ECRUp: func() bool {
+			return ecrClient != nil && ecrClient.Configured()
 		},
 	}))
 
@@ -97,6 +110,7 @@ func main() {
 		PolicySource:    policySource,
 		Eval:            eval,
 		JFrog:           jf,
+		ECR:             ecrClient,
 		Admit:           admit,
 		Auth:            authSvc,
 		AdmissionDryRun: admissionDry,
@@ -126,6 +140,7 @@ func main() {
 			"addr":            addr,
 			"db":              dbPath,
 			"jfrogConfigured": jf.Configured(),
+			"ecrConfigured":   ecrClient.Configured(),
 			"admissionDryRun": admissionDry,
 			"policySource":    policySource,
 			"policiesReady":   policyStore.Ready(context.Background()),

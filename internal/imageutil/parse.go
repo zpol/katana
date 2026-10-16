@@ -1,6 +1,7 @@
 package imageutil
 
 import (
+	"regexp"
 	"strings"
 )
 
@@ -11,6 +12,22 @@ type Ref struct {
 	Name     string
 	Tag      string
 	Digest   string
+}
+
+var ecrHostRe = regexp.MustCompile(`(?i)^(\d{12})\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?$`)
+
+// IsECRHost reports whether host is a private Amazon ECR registry.
+func IsECRHost(host string) bool {
+	return ecrHostRe.MatchString(strings.TrimSpace(host))
+}
+
+// ParseECRHost returns account ID and region for a private ECR host.
+func ParseECRHost(host string) (accountID, region string, ok bool) {
+	m := ecrHostRe.FindStringSubmatch(strings.TrimSpace(host))
+	if m == nil {
+		return "", "", false
+	}
+	return m[1], m[2], true
 }
 
 // Parse splits a container image reference into registry/name/tag/digest.

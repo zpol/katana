@@ -7,9 +7,9 @@ import (
 
 	"github.com/zpol/katana/internal/detect"
 	"github.com/zpol/katana/internal/imageutil"
-	"github.com/zpol/katana/internal/jfrog"
 	"github.com/zpol/katana/internal/policy"
 	"github.com/zpol/katana/internal/policystore"
+	"github.com/zpol/katana/internal/scan"
 	"github.com/zpol/katana/internal/store"
 )
 
@@ -29,20 +29,20 @@ type Result struct {
 	Image     string                 `json:"image"`
 	Registry  string                 `json:"registry"`
 	Namespace string                 `json:"namespace"`
-	Scan      *jfrog.ScanSummary     `json:"scan"`
+	Scan      *scan.Summary          `json:"scan"`
 	Decision  policy.Decision        `json:"decision"`
 	Input     policy.EvaluationInput `json:"input"`
 }
 
-// Service evaluates images against policies using Xray data when available.
+// Service evaluates images against policies using scanner data when available.
 type Service struct {
 	Policies  policystore.Store
 	Events    *store.Store
-	JFrog     jfrog.Client
+	Scanner   scan.Client
 	Evaluator *policy.Evaluator
 }
 
-// EvaluateImage loads policies, queries Xray (if configured), and evaluates.
+// EvaluateImage loads policies, queries the routed scanner, and evaluates.
 func (s *Service) EvaluateImage(ctx context.Context, req Request) (Result, error) {
 	ref := imageutil.Parse(req.Image)
 	policies, err := s.Policies.List(ctx)
@@ -50,9 +50,9 @@ func (s *Service) EvaluateImage(ctx context.Context, req Request) (Result, error
 		return Result{}, err
 	}
 
-	scan := &jfrog.ScanSummary{Scanned: false, Violations: []string{"jfrog client missing"}}
-	if s.JFrog != nil {
-		scan, err = s.JFrog.GetScanSummary(ctx, jfrog.ArtifactRef{
+	sum := scan.Unavailable(scan.ArtifactRef{ImageRef: req.Image}, "", "scanner client missing")
+	if s.Scanner != nil {
+		sum, err = s.Scanner.GetScanSummary(ctx, scan.ArtifactRef{
 			ImageRef: req.Image,
 			Sha:      strings.TrimPrefix(ref.Digest, "sha256:"),
 		})
@@ -61,23 +61,27 @@ func (s *Service) EvaluateImage(ctx context.Context, req Request) (Result, error
 		}
 	}
 
-	sev := highestSeverity(scan)
+	sev := highestSeverity(sum)
 	if sev == "unknown" {
 		sev = "info"
 	}
 	in := policy.EvaluationInput{
 		Severity:        sev,
 		Environment:     req.Environment,
-		Scanned:         scan != nil && scan.Scanned,
-		XrayUnavailable: scan != nil && scan.LookupStatus == "unavailable",
+		Scanned:         sum != nil && sum.Scanned,
+		XrayUnavailable: sum != nil && sum.LookupStatus == scan.StatusUnavailable,
 		Namespace:       req.Namespace,
 		Registry:        ref.Registry,
 		Image:           req.Image,
 	}
 	dec := s.Evaluator.Evaluate(policies, in)
-	if scan != nil && scan.LookupStatus == "unavailable" {
+	if sum != nil && sum.LookupStatus == scan.StatusUnavailable {
 		if dec.Allowed {
-			dec.UserMessage = "JFrog Xray lookup failed or timed out; treated as unscanned."
+			scanner := sum.Scanner
+			if scanner == "" {
+				scanner = "scanner"
+			}
+			dec.UserMessage = fmt.Sprintf("%s lookup failed or timed out; treated as unscanned.", scannerLabel(scanner))
 			if dec.Action == policy.ActionAudit {
 				dec.Action = policy.ActionWarn
 			}
@@ -88,7 +92,7 @@ func (s *Service) EvaluateImage(ctx context.Context, req Request) (Result, error
 		Image:     req.Image,
 		Registry:  ref.Registry,
 		Namespace: req.Namespace,
-		Scan:      scan,
+		Scan:      sum,
 		Decision:  dec,
 		Input:     in,
 	}
@@ -101,6 +105,17 @@ func (s *Service) EvaluateImage(ctx context.Context, req Request) (Result, error
 		_, _ = s.Events.CreateDetection(ctx, s.detectionFromResult(out, source, req.Deployed, req.DryRun))
 	}
 	return out, nil
+}
+
+func scannerLabel(name string) string {
+	switch name {
+	case "jfrog":
+		return "JFrog Xray"
+	case "ecr_inspector":
+		return "ECR Inspector"
+	default:
+		return "Scanner"
+	}
 }
 
 // RecordDetection persists an evaluation result (used by admission webhook after final outcome).
@@ -142,18 +157,18 @@ func (s *Service) detectionFromResult(res Result, source string, deployed *bool,
 	}
 }
 
-func highestSeverity(scan *jfrog.ScanSummary) string {
-	if scan == nil || !scan.Scanned {
+func highestSeverity(sum *scan.Summary) string {
+	if sum == nil || !sum.Scanned {
 		return "unknown"
 	}
 	switch {
-	case scan.Critical > 0:
+	case sum.Critical > 0:
 		return "critical"
-	case scan.High > 0:
+	case sum.High > 0:
 		return "high"
-	case scan.Medium > 0:
+	case sum.Medium > 0:
 		return "medium"
-	case scan.Low > 0:
+	case sum.Low > 0:
 		return "low"
 	default:
 		return "info"

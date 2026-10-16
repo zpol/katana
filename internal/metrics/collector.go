@@ -20,6 +20,7 @@ type Runtime struct {
 	DryRun       bool
 	Ready        func() bool
 	JFrogUp      func() bool
+	ECRUp        func() bool
 }
 
 type runtimeCollector struct {
@@ -28,6 +29,7 @@ type runtimeCollector struct {
 	info   *prometheus.Desc
 	ready  *prometheus.Desc
 	jfrog  *prometheus.Desc
+	ecr    *prometheus.Desc
 	nodes  *prometheus.Desc
 	k8sVer *prometheus.Desc
 }
@@ -50,7 +52,13 @@ func NewRuntimeCollector(rt Runtime) prometheus.Collector {
 		),
 		jfrog: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "jfrog_up"),
-			"1 if JFrog Xray is configured and last status was reachable.",
+			"1 if JFrog Xray is configured.",
+			[]string{"cluster"},
+			nil,
+		),
+		ecr: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "ecr_up"),
+			"1 if Amazon ECR Inspector scanner is configured (AWS credential chain).",
 			[]string{"cluster"},
 			nil,
 		),
@@ -94,6 +102,7 @@ func (c *runtimeCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.info
 	ch <- c.ready
 	ch <- c.jfrog
+	ch <- c.ecr
 	ch <- c.nodes
 	ch <- c.k8sVer
 }
@@ -125,6 +134,12 @@ func (c *runtimeCollector) Collect(ch chan<- prometheus.Metric) {
 		jf = 1
 	}
 	ch <- prometheus.MustNewConstMetric(c.jfrog, prometheus.GaugeValue, jf, cl)
+
+	ec := 0.0
+	if c.rt.ECRUp != nil && c.rt.ECRUp() {
+		ec = 1
+	}
+	ch <- prometheus.MustNewConstMetric(c.ecr, prometheus.GaugeValue, ec, cl)
 
 	readyN, notReadyN, k8s := c.inventory()
 	ch <- prometheus.MustNewConstMetric(c.nodes, prometheus.GaugeValue, float64(readyN), cl, "ready")

@@ -36,15 +36,17 @@ flowchart LR
 | `katana_info{cluster,version,policy_source,dry_run}` | Process identity (gauge 1) |
 | `katana_policies_ready` | CRD informer synced / sqlite ready |
 | `katana_jfrog_up` | JFrog client configured |
+| `katana_ecr_up` | ECR Inspector client configured |
 | `katana_cluster_nodes{status="ready\|not_ready"}` | Node inventory |
 | `katana_cluster_info{k8s_version}` | API server version |
 | `katana_admission_requests_total{result}` | `allow` / `deny` / `error` / `timeout` / `overloaded` |
 | `katana_admission_outcomes_total{outcome}` | `compliant` / `blocked` / `dry_run_would_deny` / `unscanned_allowed` / `error` |
 | `katana_admission_severity_total{severity}` | Highest image severity on admission |
 | `katana_admission_policy_total{policy,action}` | Matched ImagePolicy |
-| `katana_xray_lookups_total{status}` | `indexed` / `not_indexed` / `unavailable` |
+| `katana_xray_lookups_total{status}` | JFrog lookups (legacy) |
+| `katana_scan_lookups_total{scanner,status}` | `jfrog` / `ecr_inspector` × indexed/not_indexed/unavailable |
 
-Admission duration and Xray lookup histograms are also exported.
+Admission duration and scan lookup histograms are also exported.
 
 ---
 

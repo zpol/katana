@@ -74,6 +74,9 @@ spec:
                 secretKeyRef:
                   name: katana-secrets
                   key: JFROG_TOKEN
+            # Optional: ECR Inspector (prefer IRSA on the ServiceAccount instead of static keys)
+            - name: AWS_REGION
+              value: ""
           volumeMounts:
             - name: data
               mountPath: /data

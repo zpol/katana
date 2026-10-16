@@ -42,6 +42,26 @@ export interface SSOSettings {
   client_secret_configured: boolean
 }
 
+export interface ScannerToggle {
+  enabled: boolean
+}
+
+export interface IntegrationsSettings {
+  allowed_registries: string[]
+  scanners: {
+    jfrog: ScannerToggle
+    ecr_inspector: ScannerToggle
+  }
+}
+
+export interface IntegrationStatus {
+  configured: boolean
+  reachable: boolean
+  base_url?: string
+  message: string
+  scanner?: string
+}
+
 export interface KatanaUser {
   id: string
   username: string
@@ -102,12 +122,7 @@ function evaluateTimeoutSignal(ms = 120_000): AbortSignal {
   return ctrl.signal
 }
 
-export interface JFrogStatus {
-  configured: boolean
-  base_url?: string
-  reachable: boolean
-  message: string
-}
+export type JFrogStatus = IntegrationStatus
 
 export interface EvaluateResult {
   image: string
@@ -116,6 +131,7 @@ export interface EvaluateResult {
   scan: {
     scanned: boolean
     lookup_status?: string
+    scanner?: string
     critical: number
     high: number
     medium: number
@@ -182,6 +198,13 @@ export const api = {
       signal: evaluateTimeoutSignal(120_000),
     }),
   jfrogStatus: () => request<JFrogStatus>('/api/v1/integrations/jfrog'),
+  ecrStatus: () => request<IntegrationStatus>('/api/v1/integrations/ecr'),
+  getIntegrationsSettings: () => request<IntegrationsSettings>('/api/v1/settings/integrations'),
+  saveIntegrationsSettings: (body: IntegrationsSettings) =>
+    request<IntegrationsSettings>('/api/v1/settings/integrations', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
   health: () => fetch('/api/v1/health').then((r) => r.json() as Promise<{ status: string }>),
   listUsers: () => request<KatanaUser[]>('/api/v1/users'),
   createUser: (body: { username: string; password: string; role: string }) =>
