@@ -1,0 +1,113 @@
+# Default values for katana.
+# See docs/SCANNERS.md for JFrog / ECR Inspector configuration.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/zpol/katana
+  tag: "" # defaults to chart appVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+replicaCount: 1
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  # EKS IRSA example:
+  # annotations:
+  #   eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/katana-ecr-read
+
+podAnnotations: {}
+podLabels: {}
+
+# Admission + API listen on HTTPS inside the pod
+service:
+  type: ClusterIP
+  port: 443
+  targetPort: https
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+persistence:
+  enabled: false
+  size: 1Gi
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+
+# Webhook TLS: provide an existing Secret (type kubernetes.io/tls) or inline PEM (base64).
+webhook:
+  enabled: true
+  failurePolicy: Ignore
+  timeoutSeconds: 12
+  # Cluster-wide by default. Set enforceLabel to opt-in namespaces only.
+  enforceLabel: "" # e.g. "katana.dev/enforce"
+  # Existing secret with tls.crt / tls.key (and used as caBundle source if caBundle empty)
+  tlsSecretName: katana-webhook-tls
+  # PEM CA bundle (base64). If empty, chart uses .tls.cert when createSecret=true.
+  caBundle: ""
+  createSecret: false
+  # Only used when createSecret=true (lab). Prefer cert-manager / external secret in prod.
+  tls:
+    cert: "" # base64 of tls.crt (also used as caBundle if caBundle empty)
+    key: ""  # base64 of tls.key
+
+# Application secrets (create chart Secret, or point to an existing one)
+secrets:
+  create: true
+  existingSecret: "" # if set, chart will not create a Secret
+  # stringData keys when create=true
+  katanaToken: "change-me"
+  jfrogUrl: ""
+  jfrogToken: ""
+  bootstrapAdminUser: ""
+  bootstrapAdminPassword: ""
+  oidcClientId: ""
+  oidcClientSecret: ""
+
+config:
+  addr: "0.0.0.0:8443"
+  dbPath: /data/katana.db
+  admissionDryRun: true
+  policySource: sqlite # sqlite | crd
+  clusterName: ""
+  admissionTimeout: "8s"
+  authMode: local # local | oidc | hybrid
+  awsRegion: ""
+  awsDefaultRegion: ""
+  extraEnv: []
+  # - name: JFROG_TIMEOUT
+  #   value: "90s"
+
+# RBAC for ImagePolicy CRDs + node inventory gauges
+rbac:
+  create: true
+
+# Install ImagePolicy CRD (cluster-scoped)
+crd:
+  install: false
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop: ["ALL"]
+
+podSecurityContext:
+  fsGroup: 1000

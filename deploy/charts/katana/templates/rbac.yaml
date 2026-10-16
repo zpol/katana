@@ -1,0 +1,30 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "katana.fullname" . }}-imagepolicies
+  labels:
+    {{- include "katana.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["katana.dev"]
+    resources: ["imagepolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "katana.fullname" . }}-imagepolicies
+  labels:
+    {{- include "katana.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "katana.fullname" . }}-imagepolicies
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "katana.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

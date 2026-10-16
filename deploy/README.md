@@ -6,7 +6,30 @@ Auth, users, SSO: [`docs/AUTH.md`](../docs/AUTH.md) · [`docs/SSO.md`](../docs/S
 Policy reference: [`docs/policies.md`](../docs/policies.md).  
 Scanners (JFrog + ECR Inspector): [`docs/SCANNERS.md`](../docs/SCANNERS.md).  
 Fleet / Prometheus: [`docs/FLEET.md`](../docs/FLEET.md).  
-Ephemeral AWS E2E: [`e2e-aws/README.md`](e2e-aws/README.md).
+Ephemeral AWS E2E: [`e2e-aws/README.md`](e2e-aws/README.md).  
+**Helm chart:** [`charts/katana/`](charts/katana/) (recommended install path).
+
+## Helm install (recommended)
+
+```bash
+bash deploy/scripts/gen-webhook-certs.sh /tmp/katana-certs katana-system
+CABUNDLE=$(base64 -w0 /tmp/katana-certs/tls.crt)
+CERT=$(base64 -w0 /tmp/katana-certs/tls.crt)
+KEY=$(base64 -w0 /tmp/katana-certs/tls.key)
+
+helm upgrade --install katana deploy/charts/katana \
+  --namespace katana-system --create-namespace \
+  --set image.repository=registry.example.com/<team>/katana \
+  --set image.tag=0.5.0 \
+  --set webhook.createSecret=true \
+  --set-string webhook.tls.cert="$CERT" \
+  --set-string webhook.tls.key="$KEY" \
+  --set-string webhook.caBundle="$CABUNDLE" \
+  --set secrets.katanaToken=change-me \
+  --set config.admissionDryRun=true
+```
+
+See [`charts/katana/README.md`](charts/katana/README.md) for ECR IRSA and values reference.
 
 ## Prerequisites
 

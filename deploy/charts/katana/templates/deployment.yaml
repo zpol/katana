@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "katana.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "katana.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "katana.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "katana.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "katana.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: katana
+          image: {{ include "katana.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: https
+              containerPort: 8443
+          env:
+            - name: KATANA_ADDR
+              value: {{ .Values.config.addr | quote }}
+            - name: KATANA_DB_PATH
+              value: {{ .Values.config.dbPath | quote }}
+            - name: KATANA_ADMISSION_DRY_RUN
+              value: {{ .Values.config.admissionDryRun | quote }}
+            - name: KATANA_POLICY_SOURCE
+              value: {{ .Values.config.policySource | quote }}
+            - name: KATANA_AUTH_MODE
+              value: {{ .Values.config.authMode | quote }}
+            - name: KATANA_ADMISSION_TIMEOUT
+              value: {{ .Values.config.admissionTimeout | quote }}
+            - name: KATANA_TLS_CERT
+              value: /tls/tls.crt
+            - name: KATANA_TLS_KEY
+              value: /tls/tls.key
+            {{- if .Values.config.clusterName }}
+            - name: KATANA_CLUSTER_NAME
+              value: {{ .Values.config.clusterName | quote }}
+            {{- end }}
+            {{- if .Values.config.awsRegion }}
+            - name: AWS_REGION
+              value: {{ .Values.config.awsRegion | quote }}
+            {{- end }}
+            {{- if .Values.config.awsDefaultRegion }}
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.config.awsDefaultRegion | quote }}
+            {{- else if .Values.config.awsRegion }}
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.config.awsRegion | quote }}
+            {{- end }}
+            - name: KATANA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "katana.secretName" . }}
+                  key: KATANA_TOKEN
+            - name: JFROG_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "katana.secretName" . }}
+                  key: JFROG_URL
+                  optional: true
+            - name: JFROG_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "katana.secretName" . }}
+                  key: JFROG_TOKEN
+                  optional: true
+            {{- if .Values.secrets.bootstrapAdminUser }}
+            - name: KATANA_BOOTSTRAP_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "katana.secretName" . }}
+                  key: KATANA_BOOTSTRAP_ADMIN_USER
+                  optional: true
+            {{- end }}
+            {{- if .Values.secrets.bootstrapAdminPassword }}
+            - name: KATANA_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "katana.secretName" . }}
+                  key: KATANA_BOOTSTRAP_ADMIN_PASSWORD
+                  optional: true
+            {{- end }}
+            {{- with .Values.config.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "katana.fullname" . }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tls
+          secret:
+            secretName: {{ .Values.webhook.tlsSecretName }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

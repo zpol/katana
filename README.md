@@ -551,7 +551,11 @@ docker push registry.example.com/<team>/katana:0.2.0
 
 Use the `Dockerfile` in this repo (multi-stage: admin UI + Go binary). Fleet console image: `docker build --target fleet` (see [`docs/FLEET.md`](docs/FLEET.md)).
 
-### Apply manifests
+### Helm (recommended)
+
+Chart: [`deploy/charts/katana`](deploy/charts/katana). Quick start: [`deploy/charts/katana/README.md`](deploy/charts/katana/README.md) · overview: [`deploy/README.md`](deploy/README.md).
+
+### Apply manifests (raw YAML)
 
 Manifests live in [`deploy/k8s/katana.yaml`](deploy/k8s/katana.yaml). Step-by-step: [`deploy/README.md`](deploy/README.md).
 
@@ -640,7 +644,8 @@ internal/imageutil/      image ref parsing
 web/                     React admin UI (Dashboard, Policies, Detections, …)
 web-fleet/               React fleet / NOC UI
 configs/                 default policy YAML reference
-deploy/k8s/              Kubernetes manifests
+deploy/charts/katana/    Helm chart (Deployment, webhook, RBAC, secrets)
+deploy/k8s/              Raw Kubernetes manifests
 deploy/crd/              ImagePolicy CRD + default policies
 deploy/e2e-aws/          Disposable ECR + EKS Terraform for scanner E2E
 deploy/scripts/          CRD apply, webhook certs, JFrog helpers

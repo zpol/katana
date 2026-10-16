@@ -1,0 +1,36 @@
+1. Generate webhook TLS (lab) and install:
+
+```bash
+bash deploy/scripts/gen-webhook-certs.sh /tmp/katana-certs {{ .Release.Namespace }}
+CABUNDLE=$(base64 -w0 /tmp/katana-certs/tls.crt)
+CERT=$(base64 -w0 /tmp/katana-certs/tls.crt)
+KEY=$(base64 -w0 /tmp/katana-certs/tls.key)
+
+helm upgrade --install {{ .Release.Name }} deploy/charts/katana \
+  --namespace {{ .Release.Namespace }} --create-namespace \
+  --set image.repository=YOUR_REGISTRY/katana \
+  --set image.tag={{ .Chart.AppVersion }} \
+  --set webhook.createSecret=true \
+  --set-string webhook.tls.cert="$CERT" \
+  --set-string webhook.tls.key="$KEY" \
+  --set-string webhook.caBundle="$CABUNDLE" \
+  --set secrets.katanaToken=change-me \
+  --set config.admissionDryRun=true
+```
+
+2. Port-forward the UI/API:
+
+```bash
+kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "katana.fullname" . }} 8443:443
+# open https://127.0.0.1:8443
+```
+
+3. Scanners: Settings → Integrations (JFrog and/or Amazon ECR Inspector).
+   Docs: https://github.com/zpol/katana/blob/main/docs/SCANNERS.md
+
+4. Start with admission dry-run=`{{ .Values.config.admissionDryRun }}`. Set `config.admissionDryRun=false` when ready to enforce.
+
+{{- if not (include "katana.caBundle" .) }}
+
+WARNING: webhook.caBundle is empty. Patch ValidatingWebhookConfiguration after install or set webhook.caBundle / webhook.createSecret+tls.
+{{- end }}

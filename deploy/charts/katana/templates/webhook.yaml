@@ -1,0 +1,39 @@
+{{- if .Values.webhook.enabled }}
+{{- $ca := include "katana.caBundle" . }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ include "katana.fullname" . }}-image-policy
+  labels:
+    {{- include "katana.labels" . | nindent 4 }}
+webhooks:
+  - name: images.katana.dev
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    clientConfig:
+      service:
+        name: {{ include "katana.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: /validate
+        port: {{ .Values.service.port }}
+      {{- if $ca }}
+      caBundle: {{ $ca | quote }}
+      {{- else }}
+      caBundle: ""
+      {{- end }}
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods", "pods/ephemeralcontainers"]
+        scope: Namespaced
+    {{- if .Values.webhook.enforceLabel }}
+    namespaceSelector:
+      matchExpressions:
+        - key: {{ .Values.webhook.enforceLabel | quote }}
+          operator: In
+          values: ["true"]
+    {{- end }}
+{{- end }}
