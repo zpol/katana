@@ -40,6 +40,7 @@ deploy/k8s/katana-poc-webhook.generated.yaml
 # Fleet UI
 web-fleet/node_modules/
 web-fleet/dist/
+*.tsbuildinfo
 
 # Unreferenced UI captures (do not ship)
 web/public/screenshot*.png
